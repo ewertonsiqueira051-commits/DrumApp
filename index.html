@@ -1,386 +1,404 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Estudo de Bateria</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Estudo de Bateria</title>
 
-<style>
-* {
-    box-sizing: border-box;
-}
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-body {
-    margin: 0;
-    padding: 24px 12px;
-    background: #2c3e50;
-    color: #fff;
-    font-family: Arial, sans-serif;
-}
+        body {
+            margin: 0;
+            padding: 24px 12px;
+            background: #2c3e50;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+        }
 
-main {
-    max-width: 440px;
-    margin: 0 auto;
-    padding: 22px;
-    background: #34495e;
-    border-radius: 10px;
-}
+        main {
+            max-width: 440px;
+            margin: 0 auto;
+            padding: 22px;
+            background: #34495e;
+            border-radius: 10px;
+        }
 
-h1 {
-    font-size: 24px;
-    margin-top: 0;
-}
+        h1 {
+            font-size: 24px;
+            margin-top: 0;
+        }
 
-label {
-    display: block;
-    margin: 20px 0 10px;
-}
+        label {
+            display: block;
+            margin: 20px 0 10px;
+        }
 
-input {
-    max-width: 100%;
-    font-size: 16px;
-}
+        input {
+            max-width: 100%;
+            font-size: 16px;
+        }
 
-audio {
-    display: block;
-    width: 100%;
-    margin: 24px 0;
-}
+        audio {
+            display: block;
+            width: 100%;
+            margin: 24px 0;
+        }
 
-button {
-    min-height: 48px;
-    padding: 12px 18px;
-    margin: 6px 6px 6px 0;
-    border: 0;
-    border-radius: 6px;
-    background: #2980b9;
-    color: white;
-    font-size: 17px;
-}
+        button {
+            min-height: 48px;
+            padding: 12px 18px;
+            margin: 6px 6px 6px 0;
+            border: 0;
+            border-radius: 6px;
+            background: #2980b9;
+            color: #ffffff;
+            font-size: 17px;
+        }
 
-button:disabled {
-    background: #687887;
-}
+        button:disabled {
+            background: #687887;
+        }
 
-p {
-    line-height: 1.5;
-    word-wrap: break-word;
-}
+        p {
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
 
-#status {
-    min-height: 48px;
-}
+        #status {
+            min-height: 48px;
+        }
 
-.note {
-    font-size: 14px;
-    color: #e0e7ed;
-}
-</style>
+        .note {
+            font-size: 14px;
+            color: #e0e7ed;
+        }
+    </style>
 </head>
 
 <body>
-<main>
-    <h1>Estudo de Bateria</h1>
+    <main>
+        <h1>Estudo de Bateria</h1>
 
-    <p class="note">Player leve · versão iCloud 2</p>
+        <p class="note">Player leve · versão iCloud 3</p>
 
-    <label for="file">Escolher música do iCloud Drive</label>
+        <label for="file">Escolher música do iCloud Drive</label>
 
-    <input
-        id="file"
-        type="file"
-        accept="audio/*,.mp3,.m4a,.aac,.wav"
-    >
+        <input
+            id="file"
+            type="file"
+            accept="audio/*,.mp3,.m4a,.aac,.wav"
+        >
 
-    <p id="status" role="status" aria-live="polite">
-        Selecione o arquivo inteiro e depois toque em Play.
-    </p>
+        <p id="status" role="status" aria-live="polite">
+            Aguardando a inicialização do player...
+        </p>
 
-    <div id="player"></div>
+        <div id="player"></div>
 
-    <button id="play" type="button" disabled>
-        Play / Pausar
-    </button>
+        <button id="play" type="button" disabled>
+            Play / Pausar
+        </button>
 
-    <button id="stop" type="button" disabled>
-        Voltar ao início
-    </button>
+        <button id="stop" type="button" disabled>
+            Voltar ao início
+        </button>
 
-    <p class="note">
-        Use a barra do player para avançar na música.
-        Se o arquivo estiver na nuvem, aguarde o iCloud
-        disponibilizá-lo.
-    </p>
+        <p class="note">
+            Use a barra do player para avançar na música.
+            Se o arquivo estiver na nuvem, aguarde o iCloud
+            disponibilizá-lo.
+        </p>
 
-    <p class="note">
-        Esta versão usa a reprodução nativa, sem ajustes
-        de tom ou velocidade. Ao recarregar a página,
-        selecione a música novamente.
-    </p>
+        <p class="note">
+            Esta versão usa a reprodução nativa, sem ajustes
+            de tom ou velocidade. Ao recarregar a página,
+            selecione a música novamente.
+        </p>
 
-    <noscript>
-        Ative o JavaScript no Safari para usar este player.
-    </noscript>
-</main>
+        <noscript>
+            Ative o JavaScript no Safari para usar este player.
+        </noscript>
+    </main>
 
-<script>
-(function () {
-    'use strict';
+    <script>
+    (function () {
+        'use strict';
 
-    var input = document.getElementById('file');
-    var box = document.getElementById('player');
-    var status = document.getElementById('status');
-    var play = document.getElementById('play');
-    var stop = document.getElementById('stop');
+        var input = document.getElementById('file');
+        var box = document.getElementById('player');
+        var status = document.getElementById('status');
+        var play = document.getElementById('play');
+        var stop = document.getElementById('stop');
 
-    var urls = window.URL || window.webkitURL;
-    var audio = null;
-    var objectURL = null;
-    var timer = null;
+        var urls = window.URL || window.webkitURL;
+        var audio = null;
+        var objectURL = null;
+        var timer = null;
 
-    function say(text) {
-        status.textContent = text;
-    }
-
-    function clearTimer() {
-        window.clearTimeout(timer);
-        timer = null;
-    }
-
-    function release() {
-        clearTimer();
-
-        var previous = audio;
-        audio = null;
-
-        if (previous) {
-            previous.pause();
-            previous.removeAttribute('src');
-            previous.load();
+        function say(text) {
+            status.textContent = text;
         }
 
-        box.innerHTML = '';
-
-        if (objectURL) {
-            urls.revokeObjectURL(objectURL);
-            objectURL = null;
+        function clearTimer() {
+            window.clearTimeout(timer);
+            timer = null;
         }
 
-        play.disabled = true;
-        stop.disabled = true;
-    }
+        function release() {
+            clearTimer();
 
-    input.addEventListener('change', function () {
-        var file = input.files && input.files[0];
+            var previous = audio;
+            audio = null;
 
-        if (!file) {
-            return;
-        }
-
-        release();
-
-        if (!urls || !urls.createObjectURL) {
-            say(
-                'Este navegador não permite abrir ' +
-                'o arquivo dessa forma.'
-            );
-            input.value = '';
-            return;
-        }
-
-        if (!file.size) {
-            say(
-                'O arquivo está vazio ou indisponível. ' +
-                'Abra-o no iCloud, espere baixar ' +
-                'e selecione novamente.'
-            );
-            input.value = '';
-            return;
-        }
-
-        try {
-            var player = document.createElement('audio');
-
-            audio = player;
-            player.controls = true;
-            player.preload = 'none';
-            player.setAttribute(
-                'aria-label',
-                'Player da música'
-            );
-
-            function on(event, action) {
-                player.addEventListener(event, function () {
-                    if (audio === player) {
-                        action();
-                    }
-                });
+            if (previous) {
+                previous.pause();
+                previous.removeAttribute('src');
+                previous.load();
             }
 
-            on('playing', function () {
-                clearTimer();
-                say('Reproduzindo: ' + file.name);
-            });
+            box.innerHTML = '';
 
-            on('pause', function () {
-                clearTimer();
+            if (objectURL) {
+                urls.revokeObjectURL(objectURL);
+                objectURL = null;
+            }
 
-                if (!player.ended && !player.error) {
-                    say(
-                        'Pausado. Toque em Play ' +
-                        'para continuar.'
-                    );
-                }
-            });
+            play.disabled = true;
+            stop.disabled = true;
+        }
 
-            on('waiting', function () {
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+
+            if (!file) {
                 say(
-                    'Aguardando o áudio. Se o arquivo ' +
-                    'veio da nuvem, o download pode ' +
-                    'levar um tempo.'
+                    'O Safari não disponibilizou o arquivo. ' +
+                    'Abra a música no iCloud, aguarde o download ' +
+                    'e selecione novamente.'
                 );
-            });
+                return;
+            }
 
-            on('ended', function () {
-                clearTimer();
+            release();
+
+            if (!urls || !urls.createObjectURL) {
                 say(
-                    'Fim da música. Toque em Play ' +
-                    'para ouvir novamente.'
-                );
-            });
-
-            on('error', function () {
-                clearTimer();
-
-                var code = player.error ?
-                    player.error.code : 0;
-
-                say(
-                    'O Safari não conseguiu reproduzir ' +
-                    'este arquivo (código ' + code + '). ' +
-                    'Abra-o no iCloud e selecione novamente. ' +
-                    'Se persistir, teste uma cópia em MP3.'
+                    'Este navegador não permite abrir ' +
+                    'o arquivo dessa forma.'
                 );
 
                 input.value = '';
-            });
+                return;
+            }
 
-            /*
-             * Usa o arquivo inteiro diretamente.
-             * Não usa FileReader, Base64,
-             * AudioContext ou decodeAudioData.
-             */
-            objectURL = urls.createObjectURL(file);
-            player.src = objectURL;
-
-            box.appendChild(player);
-            player.load();
-
-            play.disabled = false;
-            stop.disabled = false;
-
-            say(
-                'Arquivo selecionado: ' + file.name +
-                '. Toque em Play para iniciar.'
-            );
-
-        } catch (error) {
-            release();
-            input.value = '';
-
-            say(
-                'Não foi possível abrir o arquivo. ' +
-                'Selecione novamente pelo iCloud Drive.'
-            );
-        }
-    });
-
-    play.addEventListener('click', function () {
-        if (!audio) {
-            return;
-        }
-
-        var player = audio;
-
-        if (!player.paused && !player.ended) {
-            player.pause();
-            return;
-        }
-
-        clearTimer();
-        say('Iniciando a reprodução...');
-
-        timer = window.setTimeout(function () {
-            if (audio === player && !player.error) {
+            if (!file.size) {
                 say(
-                    'Se ainda não houver som, toque ' +
-                    'no Play do player acima. ' +
-                    'Se continuar parado, envie uma ' +
-                    'foto desta tela.'
+                    'O arquivo está vazio ou indisponível. ' +
+                    'Abra-o no iCloud, espere baixar ' +
+                    'e selecione novamente.'
                 );
-            }
-        }, 20000);
 
-        try {
-            if (player.ended) {
-                player.currentTime = 0;
+                input.value = '';
+                return;
             }
 
-            var result = player.play();
+            try {
+                var player = document.createElement('audio');
 
-            /*
-             * No Safari antigo, play() pode
-             * não retornar uma Promise.
-             */
-            if (result && result.then) {
-                result.then(
-                    function () {},
-                    function () {
+                audio = player;
+                player.controls = true;
+                player.preload = 'none';
+
+                player.setAttribute(
+                    'aria-label',
+                    'Player da música'
+                );
+
+                var on = function (event, action) {
+                    player.addEventListener(event, function () {
                         if (audio === player) {
-                            clearTimer();
-
-                            say(
-                                'Não foi possível iniciar. ' +
-                                'Toque no Play do player ' +
-                                'acima; se persistir, ' +
-                                'selecione o arquivo novamente.'
-                            );
+                            action();
                         }
+                    });
+                };
+
+                on('playing', function () {
+                    clearTimer();
+                    say('Reproduzindo: ' + file.name);
+                });
+
+                on('pause', function () {
+                    clearTimer();
+
+                    if (!player.ended && !player.error) {
+                        say(
+                            'Pausado. Toque em Play ' +
+                            'para continuar.'
+                        );
                     }
+                });
+
+                on('waiting', function () {
+                    say(
+                        'Aguardando o áudio. Se o arquivo ' +
+                        'veio da nuvem, o download pode ' +
+                        'levar um tempo.'
+                    );
+                });
+
+                on('ended', function () {
+                    clearTimer();
+
+                    say(
+                        'Fim da música. Toque em Play ' +
+                        'para ouvir novamente.'
+                    );
+                });
+
+                on('error', function () {
+                    clearTimer();
+
+                    var code = player.error ?
+                        player.error.code : 0;
+
+                    say(
+                        'O Safari não conseguiu reproduzir ' +
+                        'este arquivo (código ' + code + '). ' +
+                        'Abra-o no iCloud e selecione novamente. ' +
+                        'Se persistir, teste uma cópia em MP3.'
+                    );
+
+                    input.value = '';
+                });
+
+                /*
+                 * Usa o arquivo inteiro diretamente.
+                 * Não usa FileReader, Base64,
+                 * AudioContext ou decodeAudioData.
+                 */
+                objectURL = urls.createObjectURL(file);
+                player.src = objectURL;
+
+                box.appendChild(player);
+                player.load();
+
+                play.disabled = false;
+                stop.disabled = false;
+
+                say(
+                    'Arquivo selecionado: ' + file.name +
+                    '. Toque em Play para iniciar.'
+                );
+
+            } catch (error) {
+                release();
+                input.value = '';
+
+                say(
+                    'Não foi possível abrir o arquivo. ' +
+                    'Selecione novamente pelo iCloud Drive.'
                 );
             }
+        });
 
-        } catch (error) {
+        play.addEventListener('click', function () {
+            if (!audio) {
+                return;
+            }
+
+            var player = audio;
+
+            if (!player.paused && !player.ended) {
+                player.pause();
+                return;
+            }
+
+            clearTimer();
+            say('Iniciando a reprodução...');
+
+            timer = window.setTimeout(function () {
+                if (audio === player && !player.error) {
+                    say(
+                        'Se ainda não houver som, toque ' +
+                        'no Play do player acima. ' +
+                        'Se continuar parado, envie uma ' +
+                        'foto desta tela.'
+                    );
+                }
+            }, 20000);
+
+            try {
+                if (player.ended) {
+                    player.currentTime = 0;
+                }
+
+                var result = player.play();
+
+                /*
+                 * No Safari antigo, play() pode
+                 * não retornar uma Promise.
+                 */
+                if (result && result.then) {
+                    result.then(
+                        function () {},
+                        function () {
+                            if (audio === player) {
+                                clearTimer();
+
+                                say(
+                                    'Não foi possível iniciar. ' +
+                                    'Toque no Play do player ' +
+                                    'acima; se persistir, ' +
+                                    'selecione o arquivo novamente.'
+                                );
+                            }
+                        }
+                    );
+                }
+
+            } catch (error) {
+                clearTimer();
+
+                say(
+                    'Toque no Play do player acima ' +
+                    'para iniciar.'
+                );
+            }
+        });
+
+        stop.addEventListener('click', function () {
+            if (!audio) {
+                return;
+            }
+
+            audio.pause();
             clearTimer();
 
-            say(
-                'Toque no Play do player acima ' +
-                'para iniciar.'
-            );
-        }
-    });
+            try {
+                audio.currentTime = 0;
 
-    stop.addEventListener('click', function () {
-        if (!audio) {
-            return;
-        }
+                say(
+                    'No início da música. ' +
+                    'Toque em Play.'
+                );
 
-        audio.pause();
-        clearTimer();
+            } catch (error) {
+                say(
+                    'Pausado. Inicie a reprodução antes ' +
+                    'de voltar ao início.'
+                );
+            }
+        });
 
-        try {
-            audio.currentTime = 0;
-            say('No início da música. Toque em Play.');
+        say(
+            'Player iniciado. ' +
+            'Escolha a música no iCloud Drive.'
+        );
 
-        } catch (error) {
-            say(
-                'Pausado. Inicie a reprodução antes ' +
-                'de voltar ao início.'
-            );
-        }
-    });
-
-}());
-</script>
+    }());
+    </script>
 </body>
 </html>
