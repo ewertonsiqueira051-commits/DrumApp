@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Nova senha — DrummApp</title>
+<style>
+body {
+    margin: 0;
+    padding: 24px;
+    background: #34495e;
+    color: white;
+    font: 16px Arial, sans-serif;
+}
+main { max-width: 480px; margin: auto; }
+label { display: block; margin-top: 18px; }
+input, button {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 14px;
+    margin-top: 8px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: 0;
+}
+button { background: #2980b9; color: white; }
+button:disabled { background: #687887; }
+p { line-height: 1.5; }
+a { color: white; }
+#form { display: none; }
+</style>
+</head>
+<body>
+<main>
+<h1>Definir nova senha</h1>
+<p id="status" role="status" aria-live="polite">
+    Verificando o link...
+</p>
+
+<form id="form">
+    <label for="password">Nova senha — pelo menos 12 caracteres</label>
+    <input id="password" type="password"
+           minlength="12" autocomplete="new-password" required>
+
+    <label for="confirm">Repita a nova senha</label>
+    <input id="confirm" type="password"
+           minlength="12" autocomplete="new-password" required>
+
+    <button id="save" type="submit">Salvar nova senha</button>
+</form>
+
+<p><a href="./library.html">Voltar à biblioteca</a></p>
+</main>
+
+<script src="./config.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    var cfg = window.DRUMMAPP_CONFIG || {};
+    var status = document.getElementById('status');
+    var form = document.getElementById('form');
+    var save = document.getElementById('save');
+    var params = {};
+    var token = '';
+
+    function say(text) {
+        status.textContent = text;
+    }
+
+    try {
+        var parts = window.location.hash.substring(1).split('&');
+
+        for (var i = 0; i < parts.length; i++) {
+            var separator = parts[i].indexOf('=');
+
+            if (separator > 0) {
+                var key = decodeURIComponent(parts[i].substring(0, separator));
+                var value = decodeURIComponent(
+                    parts[i].substring(separator + 1).replace(/\+/g, ' ')
+                );
+                params[key] = value;
+            }
+        }
+
+        token = params.access_token || '';
+    } catch (error) {
+        token = '';
+    }
+
+    /* Remove os dados de acesso da barra de endereço. */
+    try {
+        window.history.replaceState(null, '', window.location.pathname);
+    } catch (ignoreHistory) {}
+
+    if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+        say('Não foi possível ler o arquivo config.js.');
+        return;
+    }
+
+    if (params.error || !token || params.type !== 'recovery') {
+        token = '';
+        say(
+            'Abra esta página pelo novo e-mail de recuperação. ' +
+            'Se veio pelo e-mail, o link pode estar inválido, usado ou expirado. ' +
+            'Solicite outro e use somente o mais recente.'
+        );
+        return;
+    }
+
+    form.style.display = 'block';
+    say('Digite sua nova senha e confirme abaixo.');
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        var password = document.getElementById('password').value;
+        var confirmation = document.getElementById('confirm').value;
+
+        if (password.length < 12) {
+            say('Use pelo menos 12 caracteres.');
+            return;
+        }
+
+        if (password !== confirmation) {
+            say('As senhas não são iguais. Confira os dois campos.');
+            return;
+        }
+
+        save.disabled = true;
+        say('Salvando...');
+
+        var request = new XMLHttpRequest();
+
+        function fail(text) {
+            save.disabled = false;
+            say(text);
+        }
+
+        try {
+            request.open(
+                'PUT',
+                cfg.supabaseUrl.replace(/\/$/, '') + '/auth/v1/user',
+                true
+            );
+
+            request.timeout = 30000;
+            request.setRequestHeader('apikey', cfg.supabaseAnonKey);
+            request.setRequestHeader('Authorization', 'Bearer ' + token);
+            request.setRequestHeader('Content-Type', 'application/json');
+
+            request.onload = function () {
+                if (request.status >= 200 && request.status < 300) {
+                    token = '';
+                    form.reset();
+                    form.style.display = 'none';
+                    say(
+                        'Senha alterada! Volte à biblioteca e entre ' +
+                        'com seu e-mail e a nova senha.'
+                    );
+                    return;
+                }
+
+                if (request.status === 401 || request.status === 403) {
+                    token = '';
+                    form.reset();
+                    form.style.display = 'none';
+                    say(
+                        'Este acesso não é mais válido. ' +
+                        'Solicite um novo e-mail de recuperação.'
+                    );
+                    return;
+                }
+
+                var detail = '';
+
+                try {
+                    var response = JSON.parse(request.responseText);
+                    detail = response.msg || response.message || '';
+                } catch (ignoreJSON) {}
+
+                fail(
+                    'Não foi possível alterar a senha (' +
+                    request.status + '). ' +
+                    (detail || 'Tente uma senha diferente ou solicite outro link.')
+                );
+            };
+
+            request.onerror = function () {
+                fail(
+                    'Falha de conexão. Não foi possível confirmar a alteração. ' +
+                    'Tente entrar na biblioteca com a nova senha antes de repetir.'
+                );
+            };
+
+            request.ontimeout = function () {
+                fail(
+                    'A resposta demorou demais. Tente entrar na biblioteca ' +
+                    'com a nova senha para conferir se ela foi salva.'
+                );
+            };
+
+            request.send(JSON.stringify({ password: password }));
+        } catch (error) {
+            fail('Não foi possível enviar a solicitação.');
+        }
+    });
+}());
+</script>
+</body>
+</html>
