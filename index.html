@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="apple-mobile-web-app-capable" content="no">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DrummApp">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>DrummApp</title>
+<!-- Teste de importacao 8: seletor sem filtro; modo aplicativo mantido. -->
 <style>
 * { box-sizing: border-box; }
 html { min-height: 100%; background: #34495e; }
@@ -44,7 +45,7 @@ a { color: white; }
 <main>
 <h1>DrummApp</h1>
 <label for="file">Escolher música do iCloud Drive</label>
-<input id="file" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav">
+<input id="file" type="file">
 <p id="status" role="status" aria-live="polite">Aguardando a inicialização...</p>
 <div id="player"></div>
 <button id="play" type="button" disabled>Play / Pausar</button>
@@ -300,6 +301,12 @@ a { color: white; }
     input.addEventListener('change', function () {
         var file = input.files && input.files[0];
         if (!file) { say('Selecione novamente o arquivo no iCloud.'); return; }
+        var isAudio = /^audio\//i.test(file.type || '') || /\.(mp3|m4a|aac|wav|aif|aiff|mp4|ogg|flac)$/i.test(file.name || '');
+        if (!isAudio) {
+            say('Escolha um arquivo de música, como MP3 ou M4A. Fotos e documentos não podem ser reproduzidos.');
+            input.value = '';
+            return;
+        }
         if (!file.size) { say('O arquivo está indisponível. Abra-o no iCloud e aguarde baixar.'); input.value = ''; return; }
         removePlayer();
         resetEQ();
@@ -378,7 +385,7 @@ a { color: white; }
     });
     el('youtube-close').addEventListener('click', closeYouTube);
     resetEQ(); buttons(false);
-    say('Escolha uma música no iCloud Drive. Ela começará no som original.');
+    say('Escolha um arquivo de música, como MP3 ou M4A. O som começa sem efeitos.');
 }());
 </script>
 </body>
