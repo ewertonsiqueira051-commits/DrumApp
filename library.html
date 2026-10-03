@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Minhas músicas — DrummApp</title>
+<style>
+html,body{
+    margin:0;
+    background:#34495e;
+    color:#fff;
+    font:16px Arial,sans-serif
+}
+main{
+    max-width:720px;
+    margin:auto;
+    padding:22px
+}
+h1{margin-top:0}
+.note{line-height:1.5;color:#e0e7ed}
+audio{width:100%;margin:8px 0 20px}
+li{
+    margin:18px 0;
+    list-style:none;
+    padding:12px 0;
+    border-top:1px solid #647789
+}
+ul{padding:0}
+#status{line-height:1.5}
+</style>
+</head>
+<body>
+<main>
+<h1>Minhas músicas</h1>
+<p id="status" role="status" aria-live="polite">Carregando…</p>
+<ul id="list"></ul>
+<p>
+<a href="import.html" style="color:#fff">
+Adicionar outra música
+</a>
+</p>
+</main>
+
+<script src="config.js"></script>
+<script>
+(function(){
+'use strict';
+
+var cfg = window.DRUMMAPP_CONFIG || {};
+var status = document.getElementById('status');
+var list = document.getElementById('list');
+
+function say(text){
+    status.textContent = text;
+}
+
+function ok(){
+    return cfg.supabaseUrl &&
+        cfg.supabaseUrl.indexOf('http') === 0 &&
+        cfg.supabaseAnonKey &&
+        cfg.supabaseAnonKey.indexOf('COLE_') !== 0;
+}
+
+if (!ok()){
+    say('Configure o arquivo config.js.');
+    return;
+}
+
+var base = cfg.supabaseUrl.replace(/\/$/, '');
+var url = base +
+    '/storage/v1/object/list/' +
+    encodeURIComponent(cfg.bucket);
+
+var request = new XMLHttpRequest();
+
+request.open('POST', url, true);
+request.setRequestHeader(
+    'Authorization',
+    'Bearer ' + cfg.supabaseAnonKey
+);
+request.setRequestHeader('apikey', cfg.supabaseAnonKey);
+request.setRequestHeader('Content-Type', 'application/json');
+
+request.onload = function(){
+    if (request.status < 200 || request.status >= 300){
+        say('Não foi possível carregar a biblioteca (' +
+            request.status + ').');
+        return;
+    }
+
+    var files;
+
+    try{
+        files = JSON.parse(request.responseText);
+    }catch(error){
+        say('Resposta inválida da biblioteca.');
+        return;
+    }
+
+    if (!files.length){
+        say('Nenhuma música enviada ainda.');
+        return;
+    }
+
+    say('Escolha uma música:');
+
+    for (var i = 0; i < files.length; i++){
+        if (!files[i].name) continue;
+
+        var item = document.createElement('li');
+        var name = document.createElement('div');
+        var audio = document.createElement('audio');
+
+        name.textContent = files[i].name;
+        item.appendChild(name);
+
+        audio.controls = true;
+        audio.preload = 'none';
+        audio.src = base +
+            '/storage/v1/object/public/' +
+            encodeURIComponent(cfg.bucket) + '/' +
+            encodeURIComponent(files[i].name);
+
+        item.appendChild(audio);
+        list.appendChild(item);
+    }
+};
+
+request.onerror = function(){
+    say('Não foi possível conectar à internet.');
+};
+
+request.send(JSON.stringify({
+    prefix:'',
+    limit:100,
+    offset:0,
+    sortBy:{
+        column:'name',
+        order:'desc'
+    }
+}));
+}());
+</script>
+</body>
+</html>
