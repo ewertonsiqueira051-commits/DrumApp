@@ -1,407 +1,1050 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DrummApp">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
 <title>DrummApp</title>
-<!-- Teste de importacao 8: seletor sem filtro; modo aplicativo mantido. -->
+
+<link rel="apple-touch-icon" sizes="152x152"
+      href="./drummapp-ipad-152-v2.png">
+<link rel="apple-touch-icon" sizes="180x180"
+      href="./drummapp-iphone-180-v2.png">
+<link rel="icon" type="image/png"
+      href="./drummapp-ipad-152-v2.png">
+
 <style>
-* { box-sizing: border-box; }
-html { min-height: 100%; background: #34495e; }
-body { margin: 0; padding: 0; min-height: 100%; background: #34495e; color: #fff; font-family: Arial, sans-serif; -webkit-text-size-adjust: 100%; }
-main { width: 100%; min-height: 100vh; margin: 0; padding: 22px; background: #34495e; }
-h1 { margin: 0 0 24px; font-size: 28px; }
-h2 { font-size: 20px; }
-label { display: block; margin: 14px 0 6px; }
-input { max-width: 100%; font-size: 16px; }
-input[type="range"] { width: 100%; min-height: 40px; }
-input[type="text"] { width: 100%; padding: 12px; border: 1px solid #8294a5; border-radius: 6px; }
-button { min-height: 48px; padding: 12px; margin: 6px 4px 6px 0; border: 0; border-radius: 6px; background: #2980b9; color: white; font-size: 16px; }
-button:disabled { background: #687887; }
-input:disabled { opacity: 0.45; }
-audio { display: block; width: 100%; margin: 20px 0; }
-p { line-height: 1.5; word-wrap: break-word; }
-.note { font-size: 14px; color: #e0e7ed; }
-section { margin-top: 26px; padding-top: 14px; border-top: 1px solid #647789; }
-.value { float: right; }
-#youtube-player iframe { width: 100%; height: 240px; border: 0; margin-top: 16px; }
-#youtube-actions { display: none; }
-a { color: white; }
-@media (min-width: 768px) {
-    main { padding: 28px; }
-    h1 { font-size: 32px; }
-    button { min-height: 52px; padding: 14px 20px; }
-    #youtube-player iframe { height: 360px; }
+*{box-sizing:border-box}
+html,body{
+    margin:0;
+    min-height:100%;
+    background:#34495e;
+    color:#fff;
+    font-family:Arial,sans-serif;
+    -webkit-text-size-adjust:100%
+}
+main{
+    width:100%;
+    min-height:100vh;
+    padding:22px;
+    background:#34495e
+}
+h1{margin:0 0 24px;font-size:28px}
+h2{font-size:20px}
+label{display:block;margin:14px 0 6px}
+input{max-width:100%;font-size:16px}
+input[type=range]{width:100%;min-height:40px}
+input[type=text]{
+    width:100%;
+    padding:12px;
+    border:1px solid #8294a5;
+    border-radius:6px
+}
+button{
+    min-height:48px;
+    padding:12px;
+    margin:6px 4px 6px 0;
+    border:0;
+    border-radius:6px;
+    background:#2980b9;
+    color:white;
+    font-size:16px
+}
+button:disabled{background:#687887}
+input:disabled{opacity:.45}
+audio{
+    display:block;
+    width:100%;
+    margin:20px 0
+}
+p{
+    line-height:1.5;
+    word-wrap:break-word
+}
+.note{
+    font-size:14px;
+    color:#e0e7ed
+}
+section{
+    margin-top:26px;
+    padding-top:14px;
+    border-top:1px solid #647789
+}
+.value{float:right}
+#library-list{
+    margin-top:10px
+}
+#library-list button{
+    display:block;
+    width:100%;
+    text-align:left;
+    margin:8px 0;
+    background:#21618c
+}
+#youtube-player iframe{
+    width:100%;
+    height:240px;
+    border:0;
+    margin-top:16px
+}
+#youtube-actions{display:none}
+a{color:white}
+@media(min-width:768px){
+    main{padding:28px}
+    h1{font-size:32px}
+    button{
+        min-height:52px;
+        padding:14px 20px
+    }
+    #youtube-player iframe{height:360px}
 }
 </style>
-<link rel="apple-touch-icon" sizes="152x152" href="./drummapp-ipad-152-v2.png">
-<link rel="apple-touch-icon" sizes="180x180" href="./drummapp-iphone-180-v2.png">
-<link rel="icon" type="image/png" href="./drummapp-ipad-152-v2.png">
 </head>
+
 <body>
 <main>
+
 <h1>DrummApp</h1>
-    <p>
-    <a
-        href="library.html"
-        style="
-            display:inline-block;
-            padding:12px 16px;
-            border-radius:6px;
-            background:#2980b9;
-            color:white;
-            text-decoration:none;
-        "
-    >
-        Minhas músicas
-    </a>
-</p>
+
+<button id="library-load" type="button">
+    Minhas músicas
+</button>
+
+<div id="library-list"></div>
+
 <label for="file">Escolher música do iCloud Drive</label>
+
 <input id="file" type="file">
-<p id="status" role="status" aria-live="polite">Aguardando a inicialização...</p>
+
+<p id="status" role="status" aria-live="polite">
+    Aguardando a inicialização...
+</p>
+
 <div id="player"></div>
-<button id="play" type="button" disabled>Play / Pausar</button>
-<button id="stop" type="button" disabled>Voltar ao início</button>
+
+<button id="play" type="button" disabled>
+    Play / Pausar
+</button>
+
+<button id="stop" type="button" disabled>
+    Voltar ao início
+</button>
+
 <div>
-<button id="back" type="button" disabled>−10 segundos</button>
-<button id="forward" type="button" disabled>+10 segundos</button>
+    <button id="back" type="button" disabled>
+        −10 segundos
+    </button>
+
+    <button id="forward" type="button" disabled>
+        +10 segundos
+    </button>
 </div>
+
 <section>
 <h2>Realces manuais</h2>
-<p class="note">Cada música começa no som original. Ative os realces e ajuste somente o que quiser.</p>
-<p class="note">Estes controles ajustam frequências e podem afetar vários instrumentos ao mesmo tempo. Não separam faixas com IA. Funcionam apenas na música do iCloud.</p>
-<button id="activate" type="button" disabled>Ativar realces</button>
-<button id="restore" type="button" disabled>Restaurar som original</button>
-<p id="eq-status" role="status" aria-live="polite">Realces desligados.</p>
+
+<p class="note">
+    Cada música começa no som original.
+    Ative os realces e ajuste somente o que quiser.
+</p>
+
+<p class="note">
+    Estes controles ajustam frequências e podem afetar vários
+    instrumentos ao mesmo tempo. Não separam faixas com IA.
+    Funcionam apenas nas músicas carregadas no player.
+</p>
+
+<button id="activate" type="button" disabled>
+    Ativar realces
+</button>
+
+<button id="restore" type="button" disabled>
+    Restaurar som original
+</button>
+
+<p id="eq-status" role="status" aria-live="polite">
+    Realces desligados.
+</p>
+
 <div id="eq-controls"></div>
-<label for="output">Volume de saída <span id="output-value" class="value">100%</span></label>
-<input id="output" type="range" min="0" max="100" step="1" value="100" disabled>
-<p class="note">0 dB mantém o realce neutro. Valores negativos reduzem e positivos reforçam frequências. Se o som distorcer, reduza o volume de saída. Se ficar sem som, use “Restaurar som original”.</p>
+
+<label for="output">
+    Volume de saída
+    <span id="output-value" class="value">100%</span>
+</label>
+
+<input
+    id="output"
+    type="range"
+    min="0"
+    max="100"
+    step="1"
+    value="100"
+    disabled
+>
+
+<p class="note">
+    0 dB mantém o realce neutro.
+    Se o som distorcer, reduza o volume de saída.
+</p>
 </section>
+
 <section>
 <h2>YouTube</h2>
-<label for="youtube-url">Cole o link de um vídeo</label>
-<input id="youtube-url" type="text" placeholder="https://www.youtube.com/watch?v=..." autocapitalize="off" autocorrect="off" spellcheck="false">
-<button id="youtube-open" type="button">Abrir vídeo</button>
-<p id="youtube-status" class="note" role="status">O vídeo só será carregado quando você tocar em Abrir vídeo. Use os controles do próprio YouTube.</p>
+
+<label for="youtube-url">
+    Cole o link de um vídeo
+</label>
+
+<input
+    id="youtube-url"
+    type="text"
+    placeholder="https://www.youtube.com/watch?v=..."
+    autocapitalize="off"
+    autocorrect="off"
+    spellcheck="false"
+>
+
+<button id="youtube-open" type="button">
+    Abrir vídeo
+</button>
+
+<p id="youtube-status" class="note" role="status">
+    O vídeo só será carregado quando você tocar em Abrir vídeo.
+</p>
+
 <div id="youtube-player"></div>
+
 <div id="youtube-actions">
-<p><a id="youtube-link" target="_blank" rel="noopener noreferrer">Abrir no YouTube</a></p>
-<button id="youtube-close" type="button">Fechar vídeo</button>
+    <p>
+        <a
+            id="youtube-link"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            Abrir no YouTube
+        </a>
+    </p>
+
+    <button id="youtube-close" type="button">
+        Fechar vídeo
+    </button>
 </div>
 </section>
-<noscript>Ative o JavaScript no Safari para usar o player.</noscript>
+
+<noscript>
+    Ative o JavaScript no Safari para usar o player.
+</noscript>
+
 </main>
+
+<script src="config.js"></script>
+
 <script>
-(function () {
-    'use strict';
-    function el(id) { return document.getElementById(id); }
-    var input = el('file'), box = el('player'), status = el('status');
-    var audio = null, objectURL = null, fileName = '', timer = null;
-    var ctx = null, source = null, outputNode = null, nodes = [];
-    var eqOn = false;
-    var urls = window.URL;
-    if (!urls || !urls.createObjectURL) { urls = window.webkitURL; }
+(function(){
+'use strict';
 
-    // Perfis aproximados de equalização; não isolam instrumentos.
-    var profiles = [
-        { id: 'drums', name: 'Bateria', bands: [[80, 1, 0.4], [220, 1, 0.3], [4500, 0.8, 0.6]] },
-        { id: 'bass', name: 'Baixo', bands: [[110, 0.8, 1]] },
-        { id: 'guitar', name: 'Guitarra', bands: [[1600, 0.8, 1]] },
-        { id: 'keys', name: 'Teclado', bands: [[700, 0.6, 1]] },
-        { id: 'acoustic', name: 'Violão', bands: [[250, 0.9, 0.4], [2800, 0.8, 0.7]] }
-    ];
-    var i, markup = '';
-    for (i = 0; i < profiles.length; i++) {
-        markup += '<label for="eq-' + profiles[i].id + '">' + profiles[i].name +
-            '<span class="value" id="value-' + profiles[i].id + '">0 dB</span></label>' +
-            '<input type="range" id="eq-' + profiles[i].id +
-            '" min="-6" max="6" step="0.5" value="0" disabled>';
-    }
-    el('eq-controls').innerHTML = markup;
+function el(id){
+    return document.getElementById(id);
+}
 
-    function say(text) { status.textContent = text; }
-    function clearTimer() { window.clearTimeout(timer); timer = null; }
-    function buttons(enabled) {
-        var ids = ['play', 'stop', 'back', 'forward'];
-        for (var j = 0; j < ids.length; j++) { el(ids[j]).disabled = !enabled; }
-        el('activate').disabled = !enabled || eqOn;
-        el('restore').disabled = !enabled || !eqOn;
+var input = el('file');
+var box = el('player');
+var status = el('status');
+
+var audio = null;
+var objectURL = null;
+var currentURL = null;
+var fileName = '';
+var timer = null;
+
+var ctx = null;
+var source = null;
+var outputNode = null;
+var nodes = [];
+var eqOn = false;
+
+var urls = window.URL || window.webkitURL;
+
+var profiles = [
+    {
+        id:'drums',
+        name:'Bateria',
+        bands:[[80,1,0.4],[220,1,0.3],[4500,0.8,0.6]]
+    },
+    {
+        id:'bass',
+        name:'Baixo',
+        bands:[[110,0.8,1]]
+    },
+    {
+        id:'guitar',
+        name:'Guitarra',
+        bands:[[1600,0.8,1]]
+    },
+    {
+        id:'keys',
+        name:'Teclado',
+        bands:[[700,0.6,1]]
+    },
+    {
+        id:'acoustic',
+        name:'Violão',
+        bands:[[250,0.9,0.4],[2800,0.8,0.7]]
     }
-    function resetEQ() {
-        eqOn = false;
-        for (var j = 0; j < profiles.length; j++) {
-            el('eq-' + profiles[j].id).value = 0;
-            el('eq-' + profiles[j].id).disabled = true;
-            el('value-' + profiles[j].id).textContent = '0 dB';
+];
+
+var markup = '';
+
+for(var i=0;i<profiles.length;i++){
+    markup +=
+        '<label for="eq-'+profiles[i].id+'">'+
+        profiles[i].name+
+        '<span class="value" id="value-'+
+        profiles[i].id+'">0 dB</span></label>'+
+        '<input type="range" id="eq-'+
+        profiles[i].id+
+        '" min="-6" max="6" step="0.5" value="0" disabled>';
+}
+
+el('eq-controls').innerHTML = markup;
+
+function say(text){
+    status.textContent = text;
+}
+
+function clearTimer(){
+    window.clearTimeout(timer);
+    timer = null;
+}
+
+function buttons(enabled){
+    var ids = ['play','stop','back','forward'];
+
+    for(var j=0;j<ids.length;j++){
+        el(ids[j]).disabled = !enabled;
+    }
+
+    el('activate').disabled = !enabled || eqOn;
+    el('restore').disabled = !enabled || !eqOn;
+}
+
+function resetEQ(){
+    eqOn = false;
+
+    for(var j=0;j<profiles.length;j++){
+        el('eq-'+profiles[j].id).value = 0;
+        el('eq-'+profiles[j].id).disabled = true;
+        el('value-'+profiles[j].id).textContent = '0 dB';
+    }
+
+    el('output').value = 100;
+    el('output').disabled = true;
+    el('output-value').textContent = '100%';
+    el('eq-status').textContent =
+        'Realces desligados. Som original.';
+}
+
+function disconnectEQ(){
+    if(source){
+        try{source.disconnect();}catch(ignore){}
+    }
+
+    for(var j=0;j<nodes.length;j++){
+        try{nodes[j].node.disconnect();}catch(ignore){}
+    }
+
+    if(outputNode){
+        try{outputNode.disconnect();}catch(ignore){}
+    }
+
+    source = null;
+    outputNode = null;
+    nodes = [];
+}
+
+function closeYouTube(){
+    el('youtube-player').innerHTML = '';
+    el('youtube-actions').style.display = 'none';
+    el('youtube-status').textContent =
+        'Cole um link e toque em Abrir vídeo.';
+}
+
+function removePlayer(){
+    clearTimer();
+
+    var old = audio;
+    audio = null;
+
+    if(old){
+        try{
+            old.pause();
+            old.removeAttribute('src');
+            old.load();
+        }catch(ignore){}
+    }
+
+    disconnectEQ();
+    box.innerHTML = '';
+}
+
+function resumeEffects(player){
+    if(!eqOn || !ctx || !ctx.resume){
+        return;
+    }
+
+    var result = ctx.resume();
+
+    if(result && result.then){
+        result.then(function(){},function(){
+            if(audio === player && eqOn){
+                el('eq-status').textContent =
+                    'O Safari bloqueou os efeitos. '+
+                    'Use Restaurar som original.';
+            }
+        });
+    }
+}
+
+function buildPlayer(position, sourceURL){
+    var player = document.createElement('audio');
+
+    audio = player;
+    player.controls = true;
+    player.preload = 'none';
+    player.setAttribute('aria-label','Player da música');
+
+    var pending = position || 0;
+
+    function restorePosition(){
+        if(pending > 0){
+            try{
+                var target = pending;
+
+                if(isFinite(player.duration)){
+                    target = Math.min(target,player.duration);
+                }
+
+                player.currentTime = target;
+                pending = 0;
+            }catch(ignore){}
         }
-        el('output').value = 100;
-        el('output').disabled = true;
-        el('output-value').textContent = '100%';
-        el('eq-status').textContent = 'Realces desligados. Som original.';
     }
-    function disconnectEQ() {
-        if (source) { try { source.disconnect(); } catch (ignoreSource) {} }
-        for (var j = 0; j < nodes.length; j++) {
-            try { nodes[j].node.disconnect(); } catch (ignoreFilter) {}
+
+    player.addEventListener('loadedmetadata',restorePosition);
+    player.addEventListener('canplay',restorePosition);
+
+    player.addEventListener('play',function(){
+        if(el('youtube-player').firstChild){
+            closeYouTube();
         }
-        if (outputNode) { try { outputNode.disconnect(); } catch (ignoreOutput) {} }
-        source = null; outputNode = null; nodes = [];
-    }
-    function closeYouTube() {
-        el('youtube-player').innerHTML = '';
-        el('youtube-actions').style.display = 'none';
-        el('youtube-status').textContent = 'Cole um link e toque em Abrir vídeo.';
-    }
-    function removePlayer() {
+
+        resumeEffects(player);
+    });
+
+    player.addEventListener('playing',function(){
         clearTimer();
-        var old = audio;
-        audio = null;
-        if (old) {
-            try { old.pause(); old.removeAttribute('src'); old.load(); } catch (ignoreAudio) {}
+        say('Reproduzindo: '+fileName);
+    });
+
+    player.addEventListener('pause',function(){
+        clearTimer();
+
+        if(!player.ended && !player.error){
+            say('Pausado. Toque em Play para continuar.');
         }
-        disconnectEQ();
-        box.innerHTML = '';
+    });
+
+    player.addEventListener('waiting',function(){
+        say('Aguardando o áudio carregar...');
+    });
+
+    player.addEventListener('ended',function(){
+        clearTimer();
+        say('Fim da música. Toque em Play para recomeçar.');
+    });
+
+    player.addEventListener('error',function(){
+        clearTimer();
+        var code = player.error ? player.error.code : 0;
+
+        say(
+            'Falha ao reproduzir (código '+code+').'
+        );
+    });
+
+    player.src = sourceURL || currentURL || objectURL;
+    box.appendChild(player);
+    player.load();
+
+    buttons(true);
+}
+
+function playAudio(){
+    if(!audio){
+        return;
     }
-    function resumeEffects(player) {
-        if (!eqOn || !ctx || !ctx.resume) { return; }
-        var result = ctx.resume();
-        if (result && result.then) {
-            result.then(function () {}, function () {
-                if (audio === player && eqOn) {
-                    el('eq-status').textContent = 'O Safari bloqueou os efeitos. Use Restaurar som original.';
+
+    var player = audio;
+
+    clearTimer();
+
+    if(el('youtube-player').firstChild){
+        closeYouTube();
+    }
+
+    say('Iniciando a reprodução...');
+
+    timer = window.setTimeout(function(){
+        if(audio === player && !player.error){
+            say(
+                'Toque no Play do player acima. '+
+                'Se os efeitos estiverem sem som, '+
+                'use Restaurar som original.'
+            );
+        }
+    },20000);
+
+    try{
+        if(player.ended){
+            player.currentTime = 0;
+        }
+
+        resumeEffects(player);
+
+        var result = player.play();
+
+        if(result && result.then){
+            result.then(function(){},function(){
+                if(audio === player){
+                    clearTimer();
+                    say('Toque no Play do player acima para iniciar.');
                 }
             });
         }
-    }
-    function buildPlayer(position) {
-        var player = document.createElement('audio');
-        audio = player;
-        player.controls = true;
-        player.preload = 'none';
-        player.setAttribute('aria-label', 'Player da música');
-        var pending = position || 0;
-        var on = function (event, action) {
-            player.addEventListener(event, function () {
-                if (audio === player) { action(); }
-            });
-        };
-        var restorePosition = function () {
-            if (pending > 0) {
-                try {
-                    var target = pending;
-                    if (isFinite(player.duration)) { target = Math.min(target, player.duration); }
-                    player.currentTime = target;
-                    pending = 0;
-                } catch (ignoreSeek) {}
-            }
-        };
-        on('loadedmetadata', restorePosition);
-        on('canplay', restorePosition);
-        on('play', function () {
-            if (el('youtube-player').firstChild) { closeYouTube(); }
-            try { resumeEffects(player); } catch (ignoreResume) {}
-        });
-        on('playing', function () { clearTimer(); say('Reproduzindo: ' + fileName); });
-        on('pause', function () {
-            clearTimer();
-            if (!player.ended && !player.error) { say('Pausado. Toque em Play para continuar.'); }
-        });
-        on('waiting', function () { say('Aguardando o áudio carregar...'); });
-        on('ended', function () { clearTimer(); say('Fim da música. Toque em Play para recomeçar.'); });
-        on('error', function () {
-            clearTimer();
-            var code = player.error ? player.error.code : 0;
-            say('Falha ao reproduzir (código ' + code + '). Selecione a música novamente pelo iCloud.');
-            input.value = '';
-        });
-        player.src = objectURL;
-        box.appendChild(player);
-        player.load();
-        buttons(true);
-    }
-    function playAudio() {
-        if (!audio) { return; }
-        var player = audio;
+    }catch(error){
         clearTimer();
-        if (el('youtube-player').firstChild) { closeYouTube(); }
-        say('Iniciando a reprodução...');
-        timer = window.setTimeout(function () {
-            if (audio === player && !player.error) {
-                say('Toque no Play do player acima. Se os efeitos estiverem sem som, use Restaurar som original.');
-            }
-        }, 20000);
-        try {
-            if (player.ended) { player.currentTime = 0; }
-            resumeEffects(player);
-            var result = player.play();
-            if (result && result.then) {
-                result.then(function () {}, function () {
-                    if (audio === player) { clearTimer(); say('Toque no Play do player acima para iniciar.'); }
+        say('Toque no Play do player acima para iniciar.');
+    }
+}
+
+function restoreOriginal(){
+    if(!audio){
+        return;
+    }
+
+    var position = audio.currentTime || 0;
+
+    removePlayer();
+    resetEQ();
+    buildPlayer(position,currentURL);
+
+    say(
+        'Som original restaurado. '+
+        'Toque em Play para continuar.'
+    );
+}
+
+function updateEQ(){
+    if(!eqOn){
+        return;
+    }
+
+    var value;
+
+    for(var j=0;j<profiles.length;j++){
+        value = parseFloat(
+            el('eq-'+profiles[j].id).value
+        );
+
+        el('value-'+profiles[j].id).textContent =
+            (value > 0 ? '+' : '')+value+' dB';
+    }
+
+    for(var k=0;k<nodes.length;k++){
+        value = parseFloat(
+            el('eq-'+nodes[k].id).value
+        );
+
+        nodes[k].node.gain.value =
+            value * nodes[k].weight;
+    }
+
+    outputNode.gain.value =
+        parseFloat(el('output').value)/100;
+
+    el('output-value').textContent =
+        el('output').value+'%';
+}
+
+function activateEQ(){
+    if(!audio || eqOn){
+        return;
+    }
+
+    var player = audio;
+    var wasPlaying = !player.paused && !player.ended;
+
+    try{
+        var Context =
+            window.AudioContext ||
+            window.webkitAudioContext;
+
+        if(!Context){
+            throw new Error('Efeitos indisponíveis');
+        }
+
+        if(!ctx){
+            ctx = new Context();
+        }
+
+        player.pause();
+
+        outputNode = ctx.createGain();
+        outputNode.gain.value = 1;
+        outputNode.connect(ctx.destination);
+
+        var previous = null;
+        var band;
+        var filter;
+
+        for(var j=0;j<profiles.length;j++){
+            for(var k=0;k<profiles[j].bands.length;k++){
+                band = profiles[j].bands[k];
+
+                filter = ctx.createBiquadFilter();
+                filter.type = 'peaking';
+                filter.frequency.value = band[0];
+                filter.Q.value = band[1];
+                filter.gain.value = 0;
+
+                nodes.push({
+                    node:filter,
+                    id:profiles[j].id,
+                    weight:band[2]
                 });
-            }
-        } catch (error) { clearTimer(); say('Toque no Play do player acima para iniciar.'); }
-    }
-    function restoreOriginal() {
-        if (!audio) { return; }
-        var position = audio.currentTime || 0;
-        removePlayer();
-        resetEQ();
-        buildPlayer(position);
-        say('Som original restaurado. Toque em Play para continuar.');
-    }
-    function updateEQ() {
-        if (!eqOn) { return; }
-        var j, value;
-        for (j = 0; j < profiles.length; j++) {
-            value = parseFloat(el('eq-' + profiles[j].id).value);
-            el('value-' + profiles[j].id).textContent = (value > 0 ? '+' : '') + value + ' dB';
-        }
-        for (j = 0; j < nodes.length; j++) {
-            value = parseFloat(el('eq-' + nodes[j].id).value);
-            nodes[j].node.gain.value = value * nodes[j].weight;
-        }
-        outputNode.gain.value = parseFloat(el('output').value) / 100;
-        el('output-value').textContent = el('output').value + '%';
-    }
-    function activateEQ() {
-        if (!audio || eqOn) { return; }
-        var player = audio, wasPlaying = !player.paused && !player.ended;
-        try {
-            var Context = window.AudioContext || window.webkitAudioContext;
-            if (!Context) { throw new Error('Efeitos indisponíveis'); }
-            if (!ctx) { ctx = new Context(); }
-            player.pause();
-            outputNode = ctx.createGain();
-            outputNode.gain.value = 1;
-            outputNode.connect(ctx.destination);
-            var previous = null, j, k, band, filter;
-            for (j = 0; j < profiles.length; j++) {
-                for (k = 0; k < profiles[j].bands.length; k++) {
-                    band = profiles[j].bands[k];
-                    filter = ctx.createBiquadFilter();
-                    filter.type = 'peaking';
-                    filter.frequency.value = band[0];
-                    filter.Q.value = band[1];
-                    filter.gain.value = 0;
-                    nodes.push({ node: filter, id: profiles[j].id, weight: band[2] });
-                    if (previous) { previous.connect(filter); }
-                    previous = filter;
+
+                if(previous){
+                    previous.connect(filter);
                 }
+
+                previous = filter;
             }
-            previous.connect(outputNode);
-            source = ctx.createMediaElementSource(player);
-            source.connect(nodes[0].node);
-            eqOn = true;
-            resumeEffects(player);
-            // Pulso silencioso para desbloquear o contexto no toque.
-            var silent = ctx.createBufferSource();
-            silent.buffer = ctx.createBuffer(1, 1, ctx.sampleRate || 44100);
-            silent.connect(ctx.destination);
-            silent.onended = function () { silent.disconnect(); };
-            silent.start(0);
-            for (j = 0; j < profiles.length; j++) { el('eq-' + profiles[j].id).disabled = false; }
-            el('output').disabled = false;
-            buttons(true);
-            el('eq-status').textContent = 'Realces ativados em zero. Ajuste os controles manualmente.';
-            if (wasPlaying) { playAudio(); }
-        } catch (error) {
-            restoreOriginal();
-            el('eq-status').textContent = 'Não foi possível ativar os efeitos. O player voltou ao som original.';
         }
+
+        previous.connect(outputNode);
+
+        source = ctx.createMediaElementSource(player);
+        source.connect(nodes[0].node);
+
+        eqOn = true;
+        resumeEffects(player);
+
+        for(var p=0;p<profiles.length;p++){
+            el('eq-'+profiles[p].id).disabled = false;
+        }
+
+        el('output').disabled = false;
+        buttons(true);
+
+        el('eq-status').textContent =
+            'Realces ativados em zero. '+
+            'Ajuste os controles manualmente.';
+
+        if(wasPlaying){
+            playAudio();
+        }
+    }catch(error){
+        restoreOriginal();
+
+        el('eq-status').textContent =
+            'Não foi possível ativar os efeitos. '+
+            'O player voltou ao som original.';
     }
-    input.addEventListener('change', function () {
-        var file = input.files && input.files[0];
-        if (!file) { say('Selecione novamente o arquivo no iCloud.'); return; }
-        var isAudio = /^audio\//i.test(file.type || '') || /\.(mp3|m4a|aac|wav|aif|aiff|mp4|ogg|flac)$/i.test(file.name || '');
-        if (!isAudio) {
-            say('Escolha um arquivo de música, como MP3 ou M4A. Fotos e documentos não podem ser reproduzidos.');
-            input.value = '';
+}
+
+input.addEventListener('change',function(){
+    var file = input.files && input.files[0];
+
+    if(!file){
+        say('Selecione novamente o arquivo no iCloud.');
+        return;
+    }
+
+    var isAudio =
+        /^audio\//i.test(file.type || '') ||
+        /\.(mp3|m4a|aac|wav|aif|aiff|mp4|ogg|flac)$/i
+        .test(file.name || '');
+
+    if(!isAudio){
+        say(
+            'Escolha um arquivo de música, como MP3 ou M4A.'
+        );
+
+        input.value = '';
+        return;
+    }
+
+    if(!file.size){
+        say(
+            'O arquivo está indisponível. '+
+            'Abra-o no iCloud e aguarde baixar.'
+        );
+
+        input.value = '';
+        return;
+    }
+
+    removePlayer();
+    resetEQ();
+    buttons(false);
+
+    if(objectURL){
+        urls.revokeObjectURL(objectURL);
+        objectURL = null;
+    }
+
+    try{
+        fileName = file.name || 'Música';
+        objectURL = urls.createObjectURL(file);
+        currentURL = objectURL;
+
+        buildPlayer(0,currentURL);
+
+        say(
+            'Arquivo selecionado: '+
+            fileName+
+            '. Toque em Play.'
+        );
+    }catch(error){
+        removePlayer();
+        buttons(false);
+        input.value = '';
+        say('Não foi possível abrir o arquivo.');
+    }
+});
+
+el('play').addEventListener('click',function(){
+    if(!audio){
+        return;
+    }
+
+    if(!audio.paused && !audio.ended){
+        audio.pause();
+    }else{
+        playAudio();
+    }
+});
+
+el('stop').addEventListener('click',function(){
+    if(!audio){
+        return;
+    }
+
+    audio.pause();
+    clearTimer();
+
+    try{
+        audio.currentTime = 0;
+        say('No início da música. Toque em Play.');
+    }catch(error){
+        say('Não foi possível voltar ao início.');
+    }
+});
+
+function jump(seconds){
+    if(!audio){
+        return;
+    }
+
+    try{
+        var target = Math.max(
+            0,
+            (audio.currentTime || 0)+seconds
+        );
+
+        if(isFinite(audio.duration)){
+            target = Math.min(target,audio.duration);
+        }
+
+        audio.currentTime = target;
+    }catch(error){
+        say('Aguarde o áudio carregar e tente novamente.');
+    }
+}
+
+el('back').addEventListener('click',function(){
+    jump(-10);
+});
+
+el('forward').addEventListener('click',function(){
+    jump(10);
+});
+
+el('activate').addEventListener(
+    'click',
+    activateEQ
+);
+
+el('restore').addEventListener(
+    'click',
+    restoreOriginal
+);
+
+for(var q=0;q<profiles.length;q++){
+    el('eq-'+profiles[q].id).addEventListener(
+        'input',
+        updateEQ
+    );
+
+    el('eq-'+profiles[q].id).addEventListener(
+        'change',
+        updateEQ
+    );
+}
+
+el('output').addEventListener(
+    'input',
+    updateEQ
+);
+
+el('output').addEventListener(
+    'change',
+    updateEQ
+);
+
+/* Biblioteca de músicas online */
+
+el('library-load').addEventListener('click',function(){
+    var cfg = window.DRUMMAPP_CONFIG || {};
+    var library = el('library-list');
+
+    if(!cfg.supabaseUrl || !cfg.supabaseAnonKey){
+        library.innerHTML =
+            '<p>Configure o arquivo config.js.</p>';
+        return;
+    }
+
+    library.innerHTML =
+        '<p>Carregando músicas...</p>';
+
+    var base = cfg.supabaseUrl.replace(/\/$/,'');
+    var url = base+
+        '/storage/v1/object/list/'+
+        encodeURIComponent(cfg.bucket);
+
+    var request = new XMLHttpRequest();
+
+    request.open('POST',url,true);
+
+    request.setRequestHeader(
+        'Authorization',
+        'Bearer '+cfg.supabaseAnonKey
+    );
+
+    request.setRequestHeader(
+        'apikey',
+        cfg.supabaseAnonKey
+    );
+
+    request.setRequestHeader(
+        'Content-Type',
+        'application/json'
+    );
+
+    request.onload = function(){
+        if(request.status < 200 || request.status >= 300){
+            library.innerHTML =
+                '<p>Não foi possível carregar as músicas.</p>';
             return;
         }
-        if (!file.size) { say('O arquivo está indisponível. Abra-o no iCloud e aguarde baixar.'); input.value = ''; return; }
-        removePlayer();
-        resetEQ();
-        buttons(false);
-        if (objectURL) { urls.revokeObjectURL(objectURL); objectURL = null; }
-        try {
-            if (!urls || !urls.createObjectURL) { throw new Error('Arquivo não suportado'); }
-            fileName = file.name || 'Música';
-            objectURL = urls.createObjectURL(file);
-            buildPlayer(0);
-            say('Arquivo selecionado: ' + fileName + '. Toque em Play.');
-        } catch (error) {
-            removePlayer(); buttons(false); input.value = '';
-            if (objectURL) { urls.revokeObjectURL(objectURL); objectURL = null; }
-            say('Não foi possível abrir o arquivo. Selecione novamente pelo iCloud.');
+
+        var files;
+
+        try{
+            files = JSON.parse(request.responseText);
+        }catch(error){
+            library.innerHTML =
+                '<p>Resposta inválida da biblioteca.</p>';
+            return;
         }
-    });
-    el('play').addEventListener('click', function () {
-        if (!audio) { return; }
-        if (!audio.paused && !audio.ended) { audio.pause(); } else { playAudio(); }
-    });
-    el('stop').addEventListener('click', function () {
-        if (!audio) { return; }
-        audio.pause(); clearTimer();
-        try { audio.currentTime = 0; say('No início da música. Toque em Play.'); }
-        catch (error) { say('Inicie a reprodução antes de voltar ao início.'); }
-    });
-    function jump(seconds) {
-        if (!audio) { return; }
-        if (audio.readyState < 1) { say('Inicie a reprodução antes de avançar ou voltar.'); return; }
-        try {
-            var target = Math.max(0, (audio.currentTime || 0) + seconds);
-            if (isFinite(audio.duration)) { target = Math.min(target, audio.duration); }
-            audio.currentTime = target;
-        } catch (error) { say('Aguarde o áudio carregar e tente novamente.'); }
-    }
-    el('back').addEventListener('click', function () { jump(-10); });
-    el('forward').addEventListener('click', function () { jump(10); });
-    el('activate').addEventListener('click', activateEQ);
-    el('restore').addEventListener('click', restoreOriginal);
-    for (i = 0; i < profiles.length; i++) {
-        el('eq-' + profiles[i].id).addEventListener('input', updateEQ);
-        el('eq-' + profiles[i].id).addEventListener('change', updateEQ);
-    }
-    el('output').addEventListener('input', updateEQ);
-    el('output').addEventListener('change', updateEQ);
-    function youtubeID(text) {
-        var raw = text.replace(/^\s+|\s+$/g, '');
-        if (!raw) { return null; }
-        if (!/^https?:\/\//i.test(raw)) { raw = 'https://' + raw; }
-        var link = document.createElement('a');
-        link.href = raw;
-        var host = link.hostname.toLowerCase(), id = '', match;
-        if (host === 'youtu.be') { id = link.pathname.split('/')[1]; }
-        else if (/^(www\.|m\.|music\.)?youtube\.com$/.test(host)) {
-            match = link.search.match(/[?&]v=([A-Za-z0-9_-]{11})(?:&|$)/);
-            if (!match) { match = link.pathname.match(/^\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{11})(?:\/|$)/); }
-            if (match) { id = match[1]; }
+
+        library.innerHTML = '';
+
+        if(!files.length){
+            library.innerHTML =
+                '<p>Nenhuma música enviada ainda.</p>';
+            return;
         }
-        return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+
+        for(var i=0;i<files.length;i++){
+            if(!files[i].name){
+                continue;
+            }
+
+            (function(file){
+                var button = document.createElement('button');
+
+                button.type = 'button';
+                button.textContent =
+                    'Carregar: '+file.name;
+
+                button.onclick = function(){
+                    var remoteURL = base+
+                        '/storage/v1/object/public/'+
+                        encodeURIComponent(cfg.bucket)+
+                        '/'+
+                        encodeURIComponent(file.name);
+
+                    removePlayer();
+                    resetEQ();
+                    buttons(false);
+
+                    if(objectURL){
+                        urls.revokeObjectURL(objectURL);
+                        objectURL = null;
+                    }
+
+                    currentURL = remoteURL;
+                    fileName = file.name;
+
+                    buildPlayer(0,currentURL);
+
+                    say(
+                        'Música carregada: '+
+                        file.name+
+                        '. Toque em Play.'
+                    );
+                };
+
+                library.appendChild(button);
+            }(files[i]));
+        }
+    };
+
+    request.onerror = function(){
+        library.innerHTML =
+            '<p>Não foi possível conectar à biblioteca.</p>';
+    };
+
+    request.send(JSON.stringify({
+        prefix:'',
+        limit:100,
+        offset:0,
+        sortBy:{
+            column:'name',
+            order:'desc'
+        }
+    }));
+});
+
+/* YouTube */
+
+function youtubeID(text){
+    var raw = text.replace(/^\s+|\s+$/g,'');
+
+    if(!raw){
+        return null;
     }
-    el('youtube-open').addEventListener('click', function () {
-        var id = youtubeID(el('youtube-url').value);
-        if (!id) { el('youtube-status').textContent = 'Cole um link válido de vídeo do YouTube.'; return; }
-        if (audio) { audio.pause(); clearTimer(); }
-        closeYouTube();
-        var frame = document.createElement('iframe');
-        frame.title = 'Vídeo do YouTube';
-        frame.setAttribute('allowfullscreen', '');
-        frame.setAttribute('allow', 'encrypted-media; fullscreen');
-        frame.src = 'https://www.youtube.com/embed/' + id + '?playsinline=1&autoplay=0';
-        el('youtube-player').appendChild(frame);
-        el('youtube-link').href = 'https://www.youtube.com/watch?v=' + id;
-        el('youtube-actions').style.display = 'block';
-        el('youtube-status').textContent = 'Toque no Play do vídeo. Se não funcionar neste iPad, tente Abrir no YouTube. Os realces não se aplicam ao YouTube.';
-    });
-    el('youtube-close').addEventListener('click', closeYouTube);
-    resetEQ(); buttons(false);
-    say('Escolha um arquivo de música, como MP3 ou M4A. O som começa sem efeitos.');
+
+    if(!/^https?:\/\//i.test(raw)){
+        raw = 'https://'+raw;
+    }
+
+    var link = document.createElement('a');
+    link.href = raw;
+
+    var host = link.hostname.toLowerCase();
+    var id = '';
+    var match;
+
+    if(host === 'youtu.be'){
+        id = link.pathname.split('/')[1];
+    }else if(
+        /^(www\.|m\.|music\.)?youtube\.com$/.test(host)
+    ){
+        match = link.search.match(
+            /[?&]v=([A-Za-z0-9_-]{11})(?:&|$)/
+        );
+
+        if(!match){
+            match = link.pathname.match(
+                /^\/(?:shorts|embed|live)\/
+                ([A-Za-z0-9_-]{11})(?:\/|$)/
+            );
+        }
+
+        if(match){
+            id = match[1];
+        }
+    }
+
+    return /^[A-Za-z0-9_-]{11}$/.test(id)
+        ? id
+        : null;
+}
+
+el('youtube-open').addEventListener('click',function(){
+    var id = youtubeID(
+        el('youtube-url').value
+    );
+
+    if(!id){
+        el('youtube-status').textContent =
+            'Cole um link válido de vídeo do YouTube.';
+        return;
+    }
+
+    if(audio){
+        audio.pause();
+        clearTimer();
+    }
+
+    closeYouTube();
+
+    var frame = document.createElement('iframe');
+
+    frame.title = 'Vídeo do YouTube';
+    frame.setAttribute('allowfullscreen','');
+    frame.setAttribute(
+        'allow',
+        'encrypted-media; fullscreen'
+    );
+
+    frame.src =
+        'https://www.youtube.com/embed/'+
+        id+
+        '?playsinline=1&autoplay=0';
+
+    el('youtube-player').appendChild(frame);
+
+    el('youtube-link').href =
+        'https://www.youtube.com/watch?v='+id;
+
+    el('youtube-actions').style.display = 'block';
+
+    el('youtube-status').textContent =
+        'Toque no Play do vídeo. '+
+        'Os realces não se aplicam ao YouTube.';
+});
+
+el('youtube-close').addEventListener(
+    'click',
+    closeYouTube
+);
+
+resetEQ();
+buttons(false);
+
+say(
+    'Escolha uma música ou carregue uma faixa em Minhas músicas.'
+);
+
 }());
 </script>
+
 </body>
 </html>
