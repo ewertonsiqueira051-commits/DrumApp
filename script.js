@@ -1,811 +1,835 @@
-/* JavaScript ES5: Safari antigo + biblioteca online Supabase. */
+/* DrummApp 3 — biblioteca integrada, player e realces. */
 (function () {
     'use strict';
 
-    var audioContext = null;
-    var audioBuffer = null;
-    var sourceNode = null;
-    var isPlaying = false;
-    var position = 0;
-    var anchorTime = 0;
-    var effectiveRate = 1;
-    var progressInterval = null;
-    var loadId = 0;
-    var activeReader = null;
-    var activeRequest = null;
-    var fileName = '';
-
-    var audioUpload = document.getElementById('audio-upload');
-    var playPauseBtn = document.getElementById('play-pause-btn');
-    var stopBtn = document.getElementById('stop-btn');
-    var speedSlider = document.getElementById('speed-slider');
-    var pitchSlider = document.getElementById('pitch-slider');
-    var speedVal = document.getElementById('speed-val');
-    var pitchVal = document.getElementById('pitch-val');
-    var progressBar = document.getElementById('progress-bar');
-    var currentTimeDisplay = document.getElementById('current-time');
-    var totalDurationDisplay = document.getElementById('total-duration');
-    var status = document.getElementById('status');
-
-    var config = window.DRUMMAPP_CONFIG || {};
-    var libraryButton = null;
-    var libraryList = null;
-
-    function message(text, error) {
-        status.textContent = text;
-        status.className = error ? 'error' : '';
+    function el(id) {
+        return document.getElementById(id);
     }
 
-    function enableControls(enabled) {
-        playPauseBtn.disabled = !enabled;
-        stopBtn.disabled = !enabled;
-        speedSlider.disabled = !enabled;
-        pitchSlider.disabled = !enabled;
-        progressBar.disabled = !enabled;
+    var cfg = window.DRUMMAPP_CONFIG || {};
+    var audio = null;
+    var mediaURL = '';
+    var objectURL = null;
+    var remote = false;
+    var trackName = '';
+    var ctx = null;
+    var source = null;
+    var outputNode = null;
+    var nodes = [];
+    var eqOn = false;
+
+    var libraryBusy = false;
+    var libraryLoaded = false;
+    var libraryOffset = 0;
+    var pageSize = 100;
+
+    var urls = window.URL;
+    if (!urls || !urls.createObjectURL) {
+        urls = window.webkitURL;
     }
 
-    function formatTime(seconds) {
-        seconds = Math.max(0, Math.floor(seconds || 0));
+    var profiles = [
+        {
+            id: 'drums',
+            name: 'Bateria',
+            bands: [[80, 1, 0.4], [220, 1, 0.3], [4500, 0.8, 0.6]]
+        },
+        {
+            id: 'bass',
+            name: 'Baixo',
+            bands: [[110, 0.8, 1]]
+        },
+        {
+            id: 'guitar',
+            name: 'Guitarra',
+            bands: [[1600, 0.8, 1]]
+        },
+        {
+            id: 'keys',
+            name: 'Teclado',
+            bands: [[700, 0.6, 1]]
+        },
+        {
+            id: 'acoustic',
+            name: 'Violão',
+            bands: [[250, 0.9, 0.4], [2800, 0.8, 0.7]]
+        }
+    ];
 
-        var minutes = Math.floor(seconds / 60);
-        var remainder = seconds % 60;
-
-        return minutes + ':' +
-            (remainder < 10 ? '0' : '') +
-            remainder;
+    function say(text) {
+        el('status').textContent = text;
     }
 
-    function currentPosition() {
-        var result = position;
+    function controls(enabled) {
+        var ids = ['play', 'stop', 'back', 'forward'];
+        var i;
 
-        if (isPlaying) {
-            result +=
-                (audioContext.currentTime - anchorTime) *
-                effectiveRate;
+        for (i = 0; i < ids.length; i++) {
+            el(ids[i]).disabled = !enabled;
         }
 
-        return Math.max(
-            0,
-            Math.min(
-                audioBuffer ? audioBuffer.duration : 0,
-                result
-            )
-        );
+        el('activate').disabled = !enabled || eqOn;
+        el('restore').disabled = !enabled || !eqOn;
     }
 
-    function drawProgress() {
-        var seconds = currentPosition();
+    function createEQControls() {
+        var container = el('eq-controls');
+        var i;
 
-        progressBar.value = seconds;
-        currentTimeDisplay.textContent = formatTime(seconds);
-    }
+        for (i = 0; i < profiles.length; i++) {
+            var profile = profiles[i];
+            var label = document.createElement('label');
+            var value = document.createElement('span');
+            var slider = document.createElement('input');
 
-    function detachSource() {
-        clearInterval(progressInterval);
-        progressInterval = null;
+            label.htmlFor = 'eq-' + profile.id;
+            label.appendChild(document.createTextNode(profile.name));
 
-        if (sourceNode) {
-            sourceNode.onended = null;
+            value.id = 'value-' + profile.id;
+            value.className = 'value';
+            value.textContent = '0 dB';
+            label.appendChild(value);
 
-            try {
-                sourceNode.stop(0);
-            } catch (ignoreStop) {}
+            slider.id = 'eq-' + profile.id;
+            slider.type = 'range';
+            slider.min = '-6';
+            slider.max = '6';
+            slider.step = '0.5';
+            slider.value = '0';
+            slider.disabled = true;
 
-            try {
-                sourceNode.disconnect();
-            } catch (ignoreDisconnect) {}
+            slider.addEventListener('input', updateEQ);
+            slider.addEventListener('change', updateEQ);
 
-            sourceNode = null;
+            container.appendChild(label);
+            container.appendChild(slider);
         }
     }
 
-    function stopAudio() {
-        isPlaying = false;
-        detachSource();
-        position = 0;
-        playPauseBtn.textContent = 'Play';
-        drawProgress();
+    function resetEQ() {
+        eqOn = false;
+
+        for (var i = 0; i < profiles.length; i++) {
+            el('eq-' + profiles[i].id).value = '0';
+            el('eq-' + profiles[i].id).disabled = true;
+            el('value-' + profiles[i].id).textContent = '0 dB';
+        }
+
+        el('output').value = '100';
+        el('output').disabled = true;
+        el('output-value').textContent = '100%';
+        el('eq-status').textContent = 'Realces desligados. Som original.';
     }
 
-    function initAudioContext() {
-        if (!audioContext) {
-            var Context =
-                window.AudioContext ||
-                window.webkitAudioContext;
+    function disconnectEQ() {
+        if (source) {
+            try { source.disconnect(); } catch (ignoreSource) {}
+        }
+
+        for (var i = 0; i < nodes.length; i++) {
+            try { nodes[i].node.disconnect(); } catch (ignoreNode) {}
+        }
+
+        if (outputNode) {
+            try { outputNode.disconnect(); } catch (ignoreOutput) {}
+        }
+
+        source = null;
+        outputNode = null;
+        nodes = [];
+    }
+
+    function removePlayer() {
+        var old = audio;
+        audio = null;
+
+        if (old) {
+            try {
+                old.pause();
+                old.removeAttribute('src');
+                old.load();
+            } catch (ignorePlayer) {}
+        }
+
+        disconnectEQ();
+        el('player').innerHTML = '';
+    }
+
+    function releaseObjectURL() {
+        if (objectURL && urls) {
+            try {
+                urls.revokeObjectURL(objectURL);
+            } catch (ignoreURL) {}
+        }
+
+        objectURL = null;
+    }
+
+    function closeYouTube() {
+        el('youtube-player').innerHTML = '';
+        el('youtube-actions').style.display = 'none';
+        el('youtube-status').textContent =
+            'Cole um link e toque em Abrir vídeo.';
+    }
+
+    function resumeEffects(player) {
+        if (!eqOn || !ctx || !ctx.resume) {
+            return;
+        }
+
+        try {
+            var result = ctx.resume();
+
+            if (result && result.then) {
+                result.then(function () {}, function () {
+                    if (audio === player && eqOn) {
+                        el('eq-status').textContent =
+                            'Toque em Play novamente. Se continuar sem som, ' +
+                            'use Restaurar som original.';
+                    }
+                });
+            }
+        } catch (ignoreResume) {
+            el('eq-status').textContent =
+                'Não foi possível retomar os realces. ' +
+                'Use Restaurar som original.';
+        }
+    }
+
+    function buildPlayer(position) {
+        var player = document.createElement('audio');
+        var pending = position || 0;
+
+        audio = player;
+        player.controls = true;
+        player.preload = 'metadata';
+        player.setAttribute('playsinline', '');
+        player.setAttribute('aria-label', 'Player da música');
+
+        /*
+         * Necessário antes de definir src para que o áudio remoto
+         * possa ser processado pelo Web Audio quando o servidor
+         * permitir acesso CORS.
+         */
+        if (remote) {
+            player.crossOrigin = 'anonymous';
+            player.setAttribute('crossorigin', 'anonymous');
+        }
+
+        function on(event, callback) {
+            player.addEventListener(event, function () {
+                if (audio === player) {
+                    callback();
+                }
+            });
+        }
+
+        function restorePosition() {
+            if (pending <= 0) {
+                return;
+            }
+
+            try {
+                var target = pending;
+
+                if (isFinite(player.duration)) {
+                    target = Math.min(target, player.duration);
+                }
+
+                player.currentTime = target;
+                pending = 0;
+            } catch (ignoreSeek) {}
+        }
+
+        on('loadedmetadata', restorePosition);
+        on('canplay', restorePosition);
+
+        on('play', function () {
+            if (el('youtube-player').firstChild) {
+                closeYouTube();
+            }
+
+            resumeEffects(player);
+        });
+
+        on('playing', function () {
+            say('Reproduzindo: ' + trackName);
+        });
+
+        on('pause', function () {
+            if (!player.ended && !player.error) {
+                say('Pausado: ' + trackName);
+            }
+        });
+
+        on('waiting', function () {
+            say('Carregando o áudio...');
+        });
+
+        on('ended', function () {
+            say('Fim da música. Toque em Play para recomeçar.');
+        });
+
+        on('error', function () {
+            var code = player.error ? player.error.code : 0;
+
+            controls(false);
+            el('restore').disabled = !eqOn;
+
+            say(
+                'Falha ao reproduzir (código ' + code + '). ' +
+                'Escolha a música novamente. Se persistir, ' +
+                'teste uma cópia em MP3.'
+            );
+        });
+
+        player.src = mediaURL;
+        el('player').appendChild(player);
+        controls(true);
+        player.load();
+    }
+
+    function playAudio() {
+        if (!audio) {
+            return;
+        }
+
+        var player = audio;
+
+        if (el('youtube-player').firstChild) {
+            closeYouTube();
+        }
+
+        say('Iniciando: ' + trackName);
+
+        try {
+            if (player.ended) {
+                player.currentTime = 0;
+            }
+
+            resumeEffects(player);
+
+            var result = player.play();
+
+            if (result && result.then) {
+                result.then(function () {}, function () {
+                    if (audio === player) {
+                        say('Toque no Play do controle de áudio para iniciar.');
+                    }
+                });
+            }
+        } catch (error) {
+            say('Toque no Play do controle de áudio para iniciar.');
+        }
+    }
+
+    function loadTrack(url, name, isRemote) {
+        removePlayer();
+        resetEQ();
+        controls(false);
+        releaseObjectURL();
+        closeYouTube();
+
+        mediaURL = url;
+        trackName = name;
+        remote = isRemote;
+
+        if (!isRemote) {
+            objectURL = url;
+        }
+
+        el('track-name').textContent = trackName;
+        buildPlayer(0);
+        say('Música carregada. Toque em Play.');
+    }
+
+    function restoreOriginal() {
+        if (!audio) {
+            return;
+        }
+
+        var position = audio.currentTime || 0;
+
+        removePlayer();
+        resetEQ();
+        buildPlayer(position);
+
+        say('Som original restaurado. Toque em Play para continuar.');
+    }
+
+    function updateEQ() {
+        if (!eqOn || !outputNode) {
+            return;
+        }
+
+        var i;
+        var value;
+
+        for (i = 0; i < profiles.length; i++) {
+            value = parseFloat(el('eq-' + profiles[i].id).value);
+
+            el('value-' + profiles[i].id).textContent =
+                (value > 0 ? '+' : '') + value + ' dB';
+        }
+
+        for (i = 0; i < nodes.length; i++) {
+            value = parseFloat(el('eq-' + nodes[i].id).value);
+            nodes[i].node.gain.value = value * nodes[i].weight;
+        }
+
+        outputNode.gain.value = parseFloat(el('output').value) / 100;
+        el('output-value').textContent = el('output').value + '%';
+    }
+
+    function activateEQ() {
+        if (!audio || eqOn) {
+            return;
+        }
+
+        var player = audio;
+        var wasPlaying = !player.paused && !player.ended;
+
+        try {
+            var Context = window.AudioContext || window.webkitAudioContext;
 
             if (!Context) {
                 throw new Error('Web Audio indisponível');
             }
 
-            audioContext = new Context();
-        }
-    }
-
-    function unlockAudio() {
-        initAudioContext();
-
-        if (
-            audioContext.resume &&
-            audioContext.state !== 'running'
-        ) {
-            var resumed = audioContext.resume();
-
-            if (resumed && resumed.then) {
-                resumed.then(function () {}, function () {
-                    pauseAudio();
-
-                    message(
-                        'O Safari bloqueou o áudio. ' +
-                        'Toque em Play novamente.',
-                        true
-                    );
-                });
-            }
-        }
-
-        var silent = audioContext.createBufferSource();
-
-        silent.buffer = audioContext.createBuffer(
-            1,
-            1,
-            audioContext.sampleRate || 44100
-        );
-
-        silent.connect(audioContext.destination);
-
-        silent.onended = function () {
-            try {
-                silent.disconnect();
-            } catch (ignore) {}
-        };
-
-        silent.start(0);
-    }
-
-    function pauseAudio() {
-        if (!isPlaying) {
-            return;
-        }
-
-        position = currentPosition();
-        isPlaying = false;
-        detachSource();
-        playPauseBtn.textContent = 'Play';
-        drawProgress();
-    }
-
-    function playAudio() {
-        if (!audioBuffer || isPlaying) {
-            return;
-        }
-
-        try {
-            unlockAudio();
-
-            if (position >= audioBuffer.duration) {
-                position = 0;
+            if (!ctx || ctx.state === 'closed') {
+                ctx = new Context();
             }
 
-            var node = audioContext.createBufferSource();
+            player.pause();
 
-            sourceNode = node;
-            node.buffer = audioBuffer;
-            node.playbackRate.value = effectiveRate;
-            node.connect(audioContext.destination);
+            outputNode = ctx.createGain();
+            outputNode.gain.value = 1;
+            outputNode.connect(ctx.destination);
 
-            node.onended = function () {
-                if (sourceNode !== node || !isPlaying) {
-                    return;
-                }
-
-                isPlaying = false;
-                clearInterval(progressInterval);
-                progressInterval = null;
-
-                try {
-                    node.disconnect();
-                } catch (ignore) {}
-
-                sourceNode = null;
-                position = audioBuffer.duration;
-                playPauseBtn.textContent = 'Play';
-                drawProgress();
-
-                message(
-                    'Fim da música. Toque em Play para ouvir novamente.'
-                );
-            };
-
-            anchorTime = audioContext.currentTime;
-            node.start(0, position);
-            isPlaying = true;
-            playPauseBtn.textContent = 'Pause';
-
-            progressInterval = setInterval(drawProgress, 150);
-
-            message('Reproduzindo: ' + fileName);
-        } catch (error) {
-            isPlaying = false;
-            detachSource();
-            playPauseBtn.textContent = 'Play';
-
-            message(
-                'Não foi possível iniciar o áudio. ' +
-                'Toque em Play novamente.',
-                true
-            );
-        }
-    }
-
-    function updateRate() {
-        if (isPlaying) {
-            position = currentPosition();
-            anchorTime = audioContext.currentTime;
-        }
-
-        var speed = parseFloat(speedSlider.value);
-        var semitones = parseInt(pitchSlider.value, 10);
-
-        effectiveRate =
-            speed * Math.pow(2, semitones / 12);
-
-        speedVal.textContent = speed.toFixed(2) + 'x';
-        pitchVal.textContent = semitones;
-
-        if (sourceNode) {
-            sourceNode.playbackRate.value = effectiveRate;
-        }
-
-        drawProgress();
-    }
-
-    function resetForNewAudio() {
-        stopAudio();
-
-        audioBuffer = null;
-        enableControls(false);
-
-        totalDurationDisplay.textContent = '0:00';
-        progressBar.max = 100;
-
-        speedSlider.value = 1;
-        pitchSlider.value = 0;
-
-        updateRate();
-    }
-
-    function failedLoad(text, clearInput) {
-        activeReader = null;
-        activeRequest = null;
-        message(text, true);
-
-        if (clearInput) {
-            audioUpload.value = '';
-        }
-    }
-
-    function decodeArrayBuffer(data, name, thisLoad) {
-        message('Preparando o áudio: ' + name + '. Aguarde...');
-
-        try {
-            audioContext.decodeAudioData(
-                data,
-                function (buffer) {
-                    if (thisLoad !== loadId) {
-                        return;
-                    }
-
-                    if (
-                        !buffer ||
-                        !isFinite(buffer.duration) ||
-                        buffer.duration <= 0
-                    ) {
-                        failedLoad(
-                            'O arquivo não contém áudio utilizável.',
-                            true
-                        );
-                        return;
-                    }
-
-                    audioBuffer = buffer;
-                    position = 0;
-                    fileName = name;
-
-                    progressBar.max = buffer.duration;
-                    totalDurationDisplay.textContent =
-                        formatTime(buffer.duration);
-
-                    drawProgress();
-                    enableControls(true);
-
-                    message(
-                        'Pronto: ' +
-                        fileName +
-                        '. Toque em Play.'
-                    );
-                },
-                function () {
-                    if (thisLoad !== loadId) {
-                        return;
-                    }
-
-                    failedLoad(
-                        'O Safari não conseguiu decodificar esse áudio. ' +
-                        'Tente uma cópia em MP3.',
-                        true
-                    );
-                }
-            );
-        } catch (decodeError) {
-            failedLoad(
-                'Falha ao preparar o áudio. Tente outro arquivo.',
-                true
-            );
-        }
-    }
-
-    function loadLocalFile(file) {
-        var thisLoad = ++loadId;
-
-        if (
-            activeReader &&
-            activeReader.readyState === 1
-        ) {
-            activeReader.abort();
-        }
-
-        if (activeRequest) {
-            try {
-                activeRequest.abort();
-            } catch (ignoreAbort) {}
-
-            activeRequest = null;
-        }
-
-        resetForNewAudio();
-
-        fileName = file.name || 'Áudio';
-
-        function fail(text) {
-            if (thisLoad !== loadId) {
-                return;
-            }
-
-            failedLoad(text, true);
-        }
-
-        try {
-            unlockAudio();
-
-            if (!window.FileReader) {
-                throw new Error('FileReader indisponível');
-            }
-
-            if (!file.size) {
-                fail(
-                    'O arquivo está vazio ou indisponível. ' +
-                    'Baixe-o pelo iCloud e tente novamente.'
-                );
-                return;
-            }
-
-            message('Lendo: ' + fileName + '. Aguarde...');
-
-            var reader = new FileReader();
-
-            activeReader = reader;
-
-            reader.onerror = function () {
-                fail(
-                    'Não foi possível ler o arquivo. ' +
-                    'Abra-o no iCloud e aguarde o download.'
-                );
-            };
-
-            reader.onabort = function () {
-                fail('Leitura cancelada.');
-            };
-
-            reader.onload = function () {
-                if (thisLoad !== loadId) {
-                    return;
-                }
-
-                activeReader = null;
-
-                decodeArrayBuffer(
-                    reader.result,
-                    fileName,
-                    thisLoad
-                );
-            };
-
-            reader.readAsArrayBuffer(file);
-        } catch (error) {
-            fail(
-                'Não foi possível abrir o leitor de áudio. ' +
-                'Recarregue a página e tente novamente.'
-            );
-        }
-    }
-
-    function loadRemoteFile(file) {
-        var thisLoad = ++loadId;
-        var base;
-        var url;
-        var request;
-
-        if (!config.supabaseUrl ||
-            !config.supabaseAnonKey ||
-            !config.bucket) {
-            message(
-                'O arquivo config.js não está configurado.',
-                true
-            );
-            return;
-        }
-
-        if (activeRequest) {
-            try {
-                activeRequest.abort();
-            } catch (ignoreAbort) {}
-
-            activeRequest = null;
-        }
-
-        if (
-            activeReader &&
-            activeReader.readyState === 1
-        ) {
-            activeReader.abort();
-        }
-
-        resetForNewAudio();
-
-        fileName = file.name || 'Áudio';
-        base = config.supabaseUrl.replace(/\/$/, '');
-
-        url = base +
-            '/storage/v1/object/public/' +
-            encodeURIComponent(config.bucket) +
-            '/' +
-            encodeURIComponent(fileName);
-
-        message('Baixando: ' + fileName + '. Aguarde...');
-
-        request = new XMLHttpRequest();
-        activeRequest = request;
-
-        request.open('GET', url, true);
-        request.responseType = 'arraybuffer';
-
-        request.setRequestHeader(
-            'apikey',
-            config.supabaseAnonKey
-        );
-
-        request.setRequestHeader(
-            'Authorization',
-            'Bearer ' + config.supabaseAnonKey
-        );
-
-        request.onload = function () {
-            activeRequest = null;
-
-            if (thisLoad !== loadId) {
-                return;
-            }
-
-            if (
-                request.status < 200 ||
-                request.status >= 300
-            ) {
-                failedLoad(
-                    'Não foi possível baixar essa música (' +
-                    request.status +
-                    ').',
-                    false
-                );
-                return;
-            }
-
-            try {
-                unlockAudio();
-            } catch (unlockError) {
-                failedLoad(
-                    'O áudio foi baixado, mas o Safari bloqueou o player.',
-                    false
-                );
-                return;
-            }
-
-            decodeArrayBuffer(
-                request.response,
-                fileName,
-                thisLoad
-            );
-        };
-
-        request.onerror = function () {
-            activeRequest = null;
-
-            if (thisLoad !== loadId) {
-                return;
-            }
-
-            failedLoad(
-                'Não foi possível conectar à biblioteca.',
-                false
-            );
-        };
-
-        request.onabort = function () {
-            activeRequest = null;
-        };
-
-        request.send(null);
-    }
-
-    function createLibraryInterface() {
-        var existingButton;
-        var existingLink;
-        var parent;
-        var title;
-        var wrapper;
-
-        existingButton =
-            document.getElementById('library-load');
-
-        existingLink =
-            document.querySelector(
-                'a[href="library.html"]'
-            );
-
-        if (existingButton) {
-            libraryButton = existingButton;
-        } else if (existingLink) {
-            libraryButton = document.createElement('button');
-            libraryButton.type = 'button';
-            libraryButton.textContent = 'Minhas músicas';
-
-            existingLink.parentNode.replaceChild(
-                libraryButton,
-                existingLink
-            );
-        } else {
-            libraryButton = document.createElement('button');
-            libraryButton.type = 'button';
-            libraryButton.textContent = 'Minhas músicas';
-
-            parent = audioUpload.parentNode;
-            parent.insertBefore(
-                libraryButton,
-                audioUpload
-            );
-        }
-
-        libraryList = document.createElement('div');
-        libraryList.id = 'library-list';
-        libraryList.style.margin = '10px 0';
-
-        libraryButton.parentNode.insertBefore(
-            libraryList,
-            libraryButton.nextSibling
-        );
-
-        libraryButton.addEventListener(
-            'click',
-            loadLibrary
-        );
-    }
-
-    function loadLibrary() {
-        var base;
-        var url;
-        var request;
-
-        if (!config.supabaseUrl ||
-            !config.supabaseAnonKey ||
-            !config.bucket) {
-            libraryList.innerHTML =
-                '<p>Configure o arquivo config.js.</p>';
-            return;
-        }
-
-        libraryList.innerHTML =
-            '<p>Carregando músicas...</p>';
-
-        base = config.supabaseUrl.replace(/\/$/, '');
-
-        url = base +
-            '/storage/v1/object/list/' +
-            encodeURIComponent(config.bucket);
-
-        request = new XMLHttpRequest();
-
-        request.open('POST', url, true);
-
-        request.setRequestHeader(
-            'apikey',
-            config.supabaseAnonKey
-        );
-
-        request.setRequestHeader(
-            'Authorization',
-            'Bearer ' + config.supabaseAnonKey
-        );
-
-        request.setRequestHeader(
-            'Content-Type',
-            'application/json'
-        );
-
-        request.onload = function () {
-            var files;
+            var previous = null;
             var i;
-            var button;
+            var j;
 
-            if (
-                request.status < 200 ||
-                request.status >= 300
-            ) {
-                libraryList.innerHTML =
-                    '<p>Não foi possível carregar as músicas.</p>';
-                return;
-            }
+            for (i = 0; i < profiles.length; i++) {
+                for (j = 0; j < profiles[i].bands.length; j++) {
+                    var band = profiles[i].bands[j];
+                    var filter = ctx.createBiquadFilter();
 
-            try {
-                files = JSON.parse(request.responseText);
-            } catch (parseError) {
-                libraryList.innerHTML =
-                    '<p>Resposta inválida da biblioteca.</p>';
-                return;
-            }
+                    filter.type = 'peaking';
+                    filter.frequency.value = band[0];
+                    filter.Q.value = band[1];
+                    filter.gain.value = 0;
 
-            libraryList.innerHTML = '';
+                    nodes.push({
+                        node: filter,
+                        id: profiles[i].id,
+                        weight: band[2]
+                    });
 
-            if (!files || !files.length) {
-                libraryList.innerHTML =
-                    '<p>Nenhuma música enviada ainda.</p>';
-                return;
-            }
+                    if (previous) {
+                        previous.connect(filter);
+                    }
 
-            for (i = 0; i < files.length; i++) {
-                if (!files[i].name) {
-                    continue;
+                    previous = filter;
                 }
-
-                button = document.createElement('button');
-                button.type = 'button';
-                button.textContent =
-                    'Carregar: ' + files[i].name;
-                button.style.display = 'block';
-                button.style.width = '100%';
-                button.style.margin = '6px 0';
-
-                (function (selectedFile) {
-                    button.addEventListener(
-                        'click',
-                        function () {
-                            loadRemoteFile(selectedFile);
-                        }
-                    );
-                }(files[i]));
-
-                libraryList.appendChild(button);
-            }
-        };
-
-        request.onerror = function () {
-            libraryList.innerHTML =
-                '<p>Não foi possível conectar à biblioteca.</p>';
-        };
-
-        request.send(JSON.stringify({
-            prefix: '',
-            limit: 100,
-            offset: 0,
-            sortBy: {
-                column: 'name',
-                order: 'desc'
-            }
-        }));
-    }
-
-    audioUpload.addEventListener(
-        'change',
-        function (event) {
-            var file =
-                event.target.files &&
-                event.target.files[0];
-
-            if (!file) {
-                return;
             }
 
-            loadLocalFile(file);
-        }
-    );
+            previous.connect(outputNode);
+            source = ctx.createMediaElementSource(player);
+            source.connect(nodes[0].node);
 
-    playPauseBtn.addEventListener(
-        'click',
-        function () {
-            if (isPlaying) {
-                pauseAudio();
-                message('Pausado: ' + fileName);
-            } else {
+            eqOn = true;
+            resumeEffects(player);
+
+            var silent = ctx.createBufferSource();
+            silent.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+            silent.connect(ctx.destination);
+
+            silent.onended = function () {
+                try { silent.disconnect(); } catch (ignoreSilent) {}
+            };
+
+            silent.start(0);
+
+            for (i = 0; i < profiles.length; i++) {
+                el('eq-' + profiles[i].id).disabled = false;
+            }
+
+            el('output').disabled = false;
+            controls(true);
+
+            el('eq-status').textContent =
+                'Realces ativados em zero. Ajuste os controles. ' +
+                'Se ficar sem som, toque em Restaurar som original.';
+
+            if (wasPlaying) {
                 playAudio();
             }
-        }
-    );
+        } catch (error) {
+            restoreOriginal();
 
-    stopBtn.addEventListener(
-        'click',
-        function () {
-            stopAudio();
-            message(
-                'Parado. Toque em Play para recomeçar.'
-            );
-        }
-    );
-
-    speedSlider.addEventListener(
-        'input',
-        updateRate
-    );
-
-    speedSlider.addEventListener(
-        'change',
-        updateRate
-    );
-
-    pitchSlider.addEventListener(
-        'input',
-        updateRate
-    );
-
-    pitchSlider.addEventListener(
-        'change',
-        updateRate
-    );
-
-    function seek() {
-        if (!audioBuffer) {
-            return;
-        }
-
-        var requested =
-            parseFloat(progressBar.value);
-
-        var wasPlaying = isPlaying;
-
-        pauseAudio();
-
-        position = Math.max(
-            0,
-            Math.min(audioBuffer.duration, requested)
-        );
-
-        drawProgress();
-
-        if (
-            wasPlaying &&
-            position < audioBuffer.duration
-        ) {
-            playAudio();
+            el('eq-status').textContent =
+                'Não foi possível ativar os realces neste dispositivo. ' +
+                'O player voltou ao som original.';
         }
     }
 
-    progressBar.addEventListener(
-        'input',
-        seek
-    );
+    function jump(seconds) {
+        if (!audio) {
+            return;
+        }
 
-    progressBar.addEventListener(
-        'change',
-        seek
-    );
+        if (audio.readyState < 1) {
+            say('Aguarde o áudio carregar antes de avançar ou voltar.');
+            return;
+        }
 
-    enableControls(false);
-    createLibraryInterface();
+        try {
+            var target = Math.max(0, audio.currentTime + seconds);
+
+            if (isFinite(audio.duration)) {
+                target = Math.min(target, audio.duration);
+            }
+
+            audio.currentTime = target;
+        } catch (error) {
+            say('Não foi possível mudar a posição. Tente novamente.');
+        }
+    }
+
+    function displayName(name) {
+        return name.replace(/^\d{13}-/, '');
+    }
+
+    function setLibraryBusy(busy) {
+        libraryBusy = busy;
+        el('library-refresh').disabled = busy;
+        el('library-more').disabled = busy;
+    }
+
+    function appendLibraryTrack(file, base) {
+        if (!file || !file.name || !file.id) {
+            return;
+        }
+
+        var button = document.createElement('button');
+        var name = displayName(file.name);
+
+        button.type = 'button';
+        button.textContent = name;
+
+        button.addEventListener('click', function () {
+            var url = base +
+                '/storage/v1/object/public/' +
+                encodeURIComponent(cfg.bucket) + '/' +
+                encodeURIComponent(file.name);
+
+            loadTrack(url, name, true);
+            el('library-panel').style.display = 'none';
+            el('library-open').setAttribute('aria-expanded', 'false');
+        });
+
+        el('library-list').appendChild(button);
+    }
+
+    function loadLibrary(reset) {
+        if (libraryBusy) {
+            return;
+        }
+
+        if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !cfg.bucket) {
+            el('library-status').textContent =
+                'Não foi possível ler a configuração. Confira o config.js.';
+            return;
+        }
+
+        if (reset) {
+            libraryOffset = 0;
+            libraryLoaded = false;
+            el('library-list').innerHTML = '';
+        }
+
+        el('library-more').style.display = 'none';
+        el('library-status').textContent = 'Carregando músicas...';
+        setLibraryBusy(true);
+
+        var base = cfg.supabaseUrl.replace(/\/$/, '');
+        var request = new XMLHttpRequest();
+
+        function fail(text) {
+            setLibraryBusy(false);
+            el('library-status').textContent = text;
+
+            if (libraryOffset > 0) {
+                el('library-more').style.display = 'inline-block';
+            }
+        }
+
+        try {
+            request.open(
+                'POST',
+                base + '/storage/v1/object/list/' +
+                encodeURIComponent(cfg.bucket),
+                true
+            );
+
+            request.timeout = 30000;
+            request.setRequestHeader('apikey', cfg.supabaseAnonKey);
+            request.setRequestHeader('Content-Type', 'application/json');
+
+            /*
+             * Chaves sb_publishable_ são enviadas em apikey.
+             * Apenas a chave anon antiga, em formato JWT, vai em Bearer.
+             */
+            if (cfg.supabaseAnonKey.indexOf('eyJ') === 0) {
+                request.setRequestHeader(
+                    'Authorization',
+                    'Bearer ' + cfg.supabaseAnonKey
+                );
+            }
+
+            request.onload = function () {
+                if (request.status < 200 || request.status >= 300) {
+                    fail(
+                        'Não foi possível carregar a biblioteca (' +
+                        request.status + '). Toque em Atualizar lista.'
+                    );
+                    return;
+                }
+
+                var files;
+
+                try {
+                    files = JSON.parse(request.responseText);
+
+                    if (Object.prototype.toString.call(files) !== '[object Array]') {
+                        throw new Error('Resposta inesperada');
+                    }
+                } catch (error) {
+                    fail('Resposta inválida. Toque em Atualizar lista.');
+                    return;
+                }
+
+                for (var i = 0; i < files.length; i++) {
+                    appendLibraryTrack(files[i], base);
+                }
+
+                libraryOffset += files.length;
+                libraryLoaded = true;
+                setLibraryBusy(false);
+
+                el('library-more').style.display =
+                    files.length === pageSize ? 'inline-block' : 'none';
+
+                el('library-status').textContent =
+                    el('library-list').children.length ?
+                    'Escolha uma música abaixo.' :
+                    'Nenhuma música encontrada. Envie uma pelo Safari.';
+            };
+
+            request.onerror = function () {
+                fail('Falha de conexão. Confira a internet e atualize a lista.');
+            };
+
+            request.ontimeout = function () {
+                fail('A conexão demorou demais. Toque em Atualizar lista.');
+            };
+
+            request.send(JSON.stringify({
+                prefix: '',
+                limit: pageSize,
+                offset: libraryOffset,
+                sortBy: {
+                    column: 'name',
+                    order: 'desc'
+                }
+            }));
+        } catch (error) {
+            fail('Não foi possível abrir a biblioteca. Confira o config.js.');
+        }
+    }
+
+    function youtubeID(text) {
+        var raw = text.replace(/^\s+|\s+$/g, '');
+
+        if (!raw) {
+            return null;
+        }
+
+        if (!/^https?:\/\//i.test(raw)) {
+            raw = 'https://' + raw;
+        }
+
+        var link = document.createElement('a');
+        link.href = raw;
+
+        var host = link.hostname.toLowerCase();
+        var id = '';
+        var match;
+
+        if (host === 'youtu.be') {
+            id = link.pathname.split('/')[1];
+        } else if (/^(www\.|m\.|music\.)?youtube\.com$/.test(host)) {
+            match = link.search.match(/[?&]v=([A-Za-z0-9_-]{11})(?:&|$)/);
+
+            if (!match) {
+                match = link.pathname.match(/^\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{11})(?:\/|$)/);
+            }
+
+            if (match) {
+                id = match[1];
+            }
+        }
+
+        return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+    }
+
+    el('library-open').addEventListener('click', function () {
+        var panel = el('library-panel');
+        var visible = panel.style.display === 'block';
+
+        panel.style.display = visible ? 'none' : 'block';
+        el('library-open').setAttribute(
+            'aria-expanded',
+            visible ? 'false' : 'true'
+        );
+
+        if (!visible && !libraryLoaded) {
+            loadLibrary(true);
+        }
+    });
+
+    el('library-refresh').addEventListener('click', function () {
+        loadLibrary(true);
+    });
+
+    el('library-more').addEventListener('click', function () {
+        loadLibrary(false);
+    });
+
+    el('file').addEventListener('change', function () {
+        var file = this.files && this.files[0];
+
+        if (!file) {
+            return;
+        }
+
+        if (!file.size) {
+            say('O arquivo está vazio ou ainda não foi baixado do iCloud.');
+            this.value = '';
+            return;
+        }
+
+        if (
+            !/^audio\//i.test(file.type || '') &&
+            !/\.(mp3|m4a|aac|wav|aif|aiff|mp4|ogg|flac)$/i.test(file.name || '')
+        ) {
+            say('Escolha um arquivo de música, como MP3 ou M4A.');
+            this.value = '';
+            return;
+        }
+
+        try {
+            if (!urls || !urls.createObjectURL) {
+                throw new Error('Arquivo indisponível');
+            }
+
+            var url = urls.createObjectURL(file);
+            loadTrack(url, file.name || 'Música', false);
+        } catch (error) {
+            say('Não foi possível abrir esse arquivo.');
+        }
+
+        this.value = '';
+    });
+
+    el('play').addEventListener('click', function () {
+        if (!audio) {
+            return;
+        }
+
+        if (!audio.paused && !audio.ended) {
+            audio.pause();
+        } else {
+            playAudio();
+        }
+    });
+
+    el('stop').addEventListener('click', function () {
+        if (!audio) {
+            return;
+        }
+
+        audio.pause();
+
+        try {
+            audio.currentTime = 0;
+            say('No início da música. Toque em Play.');
+        } catch (error) {
+            say('Aguarde a música carregar para voltar ao início.');
+        }
+    });
+
+    el('back').addEventListener('click', function () {
+        jump(-10);
+    });
+
+    el('forward').addEventListener('click', function () {
+        jump(10);
+    });
+
+    el('activate').addEventListener('click', activateEQ);
+    el('restore').addEventListener('click', restoreOriginal);
+    el('output').addEventListener('input', updateEQ);
+    el('output').addEventListener('change', updateEQ);
+
+    el('youtube-open').addEventListener('click', function () {
+        var id = youtubeID(el('youtube-url').value);
+
+        if (!id) {
+            el('youtube-status').textContent =
+                'Cole um link válido de vídeo do YouTube.';
+            return;
+        }
+
+        if (audio) {
+            audio.pause();
+        }
+
+        closeYouTube();
+
+        var frame = document.createElement('iframe');
+        frame.title = 'Vídeo do YouTube';
+        frame.setAttribute('allowfullscreen', '');
+        frame.setAttribute('allow', 'encrypted-media; fullscreen');
+        frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+
+        frame.src = 'https://www.youtube.com/embed/' +
+            id + '?playsinline=1&autoplay=0';
+
+        el('youtube-player').appendChild(frame);
+        el('youtube-link').href = 'https://www.youtube.com/watch?v=' + id;
+        el('youtube-actions').style.display = 'block';
+
+        el('youtube-status').textContent =
+            'Toque no Play do vídeo. Se não abrir, use Abrir no YouTube.';
+    });
+
+    el('youtube-close').addEventListener('click', closeYouTube);
+
+    createEQControls();
+    resetEQ();
+    controls(false);
+
+    el('library-open').setAttribute('aria-expanded', 'false');
+
+    /*
+     * O seletor local fica disponível no navegador.
+     * No modo aplicativo do iPad, usamos a biblioteca online.
+     */
+    if (!window.navigator.standalone) {
+        el('local-panel').style.display = 'block';
+    }
+
+    say('Toque em Minhas músicas, escolha uma faixa e depois toque em Play.');
 }());
