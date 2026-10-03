@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Adicionar música — DrummApp</title>
+<style>
+html,body{margin:0;background:#34495e;color:#fff;font:16px Arial,sans-serif}
+main{max-width:720px;margin:auto;padding:22px}
+h1{font-size:28px;margin-top:0}
+label{display:block;margin:18px 0 8px}
+input[type=file]{font-size:16px;max-width:100%}
+button{min-height:48px;padding:12px 18px;margin:14px 4px 6px 0;border:0;border-radius:6px;background:#2980b9;color:#fff;font-size:16px}
+button:disabled{background:#687887}
+.note{line-height:1.5;color:#e0e7ed}
+#status{line-height:1.5;min-height:24px}
+</style>
+</head>
+<body>
+<main>
+<h1>Adicionar música</h1>
+<p class="note">Abra esta página no Safari. Escolha a faixa no iCloud Drive e envie-a para a biblioteca do DrummApp.</p>
+
+<label for="file">Escolher música</label>
+<input id="file" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav">
+
+<br>
+<button id="send" type="button" disabled>Enviar música</button>
+<p id="status" role="status" aria-live="polite">Aguardando uma música.</p>
+<p><a href="library.html" style="color:#fff">Abrir biblioteca</a></p>
+</main>
+
+<script src="config.js"></script>
+<script>
+(function(){
+'use strict';
+
+var fileInput = document.getElementById('file');
+var send = document.getElementById('send');
+var status = document.getElementById('status');
+var selected = null;
+var cfg = window.DRUMMAPP_CONFIG || {};
+
+function ok(){
+    return cfg.supabaseUrl &&
+        cfg.supabaseUrl.indexOf('http') === 0 &&
+        cfg.supabaseAnonKey &&
+        cfg.supabaseAnonKey.indexOf('COLE_') !== 0;
+}
+
+function say(text){
+    status.textContent = text;
+}
+
+fileInput.onchange = function(){
+    selected = fileInput.files && fileInput.files[0] || null;
+    send.disabled = !selected;
+
+    say(selected
+        ? 'Selecionada: ' + selected.name + '. Toque em Enviar música.'
+        : 'Aguardando uma música.'
+    );
+};
+
+send.onclick = function(){
+    if (!selected) return;
+
+    if (!ok()){
+        say('Configure o arquivo config.js.');
+        return;
+    }
+
+    if (selected.size > 50 * 1024 * 1024){
+        say('Esse arquivo passa do limite de 50 MB.');
+        return;
+    }
+
+    send.disabled = true;
+    say('Enviando…');
+
+    var path = Date.now() + '-' +
+        selected.name.replace(/[^A-Za-z0-9._-]/g, '_');
+
+    var url = cfg.supabaseUrl.replace(/\/$/, '') +
+        '/storage/v1/object/' +
+        encodeURIComponent(cfg.bucket) + '/' +
+        encodeURIComponent(path);
+
+    var request = new XMLHttpRequest();
+
+    request.open('POST', url, true);
+    request.setRequestHeader(
+        'Authorization',
+        'Bearer ' + cfg.supabaseAnonKey
+    );
+    request.setRequestHeader('apikey', cfg.supabaseAnonKey);
+    request.setRequestHeader(
+        'Content-Type',
+        selected.type || 'application/octet-stream'
+    );
+
+    request.onload = function(){
+        if (request.status >= 200 && request.status < 300){
+            say('Música enviada. Abra a biblioteca.');
+        } else {
+            say('Falha no envio (' + request.status + ').');
+        }
+
+        send.disabled = false;
+    };
+
+    request.onerror = function(){
+        say('Não foi possível conectar à internet.');
+        send.disabled = false;
+    };
+
+    request.send(selected);
+};
+
+if (!ok()){
+    say('Configure primeiro o arquivo config.js.');
+}
+}());
+</script>
+</body>
+</html>
